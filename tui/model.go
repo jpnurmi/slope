@@ -57,7 +57,29 @@ func (m Model) itemCount() int {
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.picker.Init()
+	return tea.Batch(m.printDump(), m.picker.Init())
+}
+
+func (m Model) buildDump() string {
+	var b strings.Builder
+	sep := m.separator()
+
+	b.WriteString(labelStyle.Render(
+		fmt.Sprintf("%s · %s", filepath.Base(m.filePath), formatSize(int(m.fileSize))),
+	) + "\n")
+	b.WriteString(sep + "\n")
+	b.WriteString(formatHeader(m.envelope.Header) + "\n")
+
+	for i, item := range m.envelope.Items {
+		b.WriteString("\n" + labelStyle.Render(itemLabel(i, item)) + "\n")
+		b.WriteString(sep + "\n")
+		b.WriteString(formatHeader(item.Header) + "\n")
+	}
+	return b.String()
+}
+
+func (m Model) printDump() tea.Cmd {
+	return tea.Println(m.buildDump())
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -106,6 +128,7 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			}
 			m.dirty = true
 			m.message = "Item deleted"
+			return m, m.printDump()
 		}
 	case keyA:
 		m.mode = modeInput
@@ -151,12 +174,13 @@ func (m Model) updatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.picker.Path = ""
 		if err := m.addAttachment(path); err != nil {
 			m.message = errorStyle.Render("Error: " + err.Error())
-		} else {
-			m.dirty = true
-			m.message = savedStyle.Render("Added " + filepath.Base(path))
+			m.mode = modeList
+			return m, nil
 		}
+		m.dirty = true
+		m.message = savedStyle.Render("Added " + filepath.Base(path))
 		m.mode = modeList
-		return m, nil
+		return m, m.printDump()
 	}
 
 	return m, cmd
@@ -167,7 +191,16 @@ func (m Model) View() tea.View {
 
 	switch m.mode {
 	case modeList:
-		m.viewList(&b)
+		if m.itemCount() > 0 {
+			for i, item := range m.envelope.Items {
+				label := itemLabel(i, item)
+				if i == m.selected {
+					b.WriteString("> " + selectedLabelStyle.Render(label) + "\n")
+				} else {
+					b.WriteString("  " + label + "\n")
+				}
+			}
+		}
 	case modeInput:
 		b.WriteString(labelStyle.Render("Select file to attach") + "\n\n")
 		b.WriteString(m.picker.View() + "\n")
@@ -188,38 +221,6 @@ func (m Model) separator() string {
 	}
 	return separatorStyle.Render(strings.Repeat("─", w))
 }
-
-func (m Model) viewList(b *strings.Builder) {
-	sep := m.separator()
-
-	// Envelope header
-	b.WriteString(labelStyle.Render(
-		fmt.Sprintf("%s · %s", filepath.Base(m.filePath), formatSize(int(m.fileSize))),
-	) + "\n")
-	b.WriteString(sep + "\n")
-	b.WriteString(formatHeader(m.envelope.Header) + "\n")
-
-	// Item headers (static dump, fully copy-pasteable)
-	for i, item := range m.envelope.Items {
-		b.WriteString("\n" + labelStyle.Render(itemLabel(i, item)) + "\n")
-		b.WriteString(sep + "\n")
-		b.WriteString(formatHeader(item.Header) + "\n")
-	}
-
-	// Selection list at bottom
-	if m.itemCount() > 0 {
-		b.WriteString("\n")
-		for i, item := range m.envelope.Items {
-			label := itemLabel(i, item)
-			if i == m.selected {
-				b.WriteString("> " + selectedLabelStyle.Render(label) + "\n")
-			} else {
-				b.WriteString("  " + label + "\n")
-			}
-		}
-	}
-}
-
 
 func (m Model) helpText() string {
 	switch m.mode {
