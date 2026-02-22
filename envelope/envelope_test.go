@@ -243,3 +243,31 @@ func TestUpdateLength(t *testing.T) {
 		t.Errorf("length = %d, want 42", parsed.Length)
 	}
 }
+
+func TestParseErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"empty input", ""},
+		{"truncated payload", "{}\n{\"type\":\"event\",\"length\":100}\nhello\n"},
+		{"invalid item header", "{}\nnot json\nhello\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse(strings.NewReader(tt.input))
+			if err == nil {
+				t.Error("expected error, got nil")
+			}
+		})
+	}
+}
+
+func TestOneLineJSONEscapedQuotes(t *testing.T) {
+	input := `{"msg":"say \"hi\""}`
+	got := OneLineJSON(json.RawMessage(input))
+	want := `{ "msg": "say \"hi\"" }`
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
