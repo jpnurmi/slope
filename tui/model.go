@@ -207,9 +207,18 @@ func (m Model) viewInPager() tea.Cmd {
 		content = string(item.Payload) + "\n"
 	}
 
-	c := exec.Command("less", "-R")
+	pager := os.Getenv("PAGER")
+	if pager == "" {
+		pager = "less -R"
+	}
+	c := exec.Command("sh", "-c", pager, "--")
 	c.Stdin = strings.NewReader(content)
-	return tea.ExecProcess(c, func(err error) tea.Msg { return nil })
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			return editResultMsg{err: fmt.Errorf("pager: %w", err)}
+		}
+		return nil
+	})
 }
 
 func (m Model) editInEditor() tea.Cmd {
