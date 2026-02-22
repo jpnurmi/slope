@@ -306,9 +306,9 @@ func (m Model) helpText() string {
 		if m.itemCount() == 0 || envelope.IsBinary(m.envelope.Items[m.selected].Payload) {
 			editStyle = helpDisabledStyle
 		}
-		return helpStyle.Render("↑/↓ navigate · enter view") +
+		return helpStyle.Render("↑/↓ navigate · enter view · a add") +
 			editStyle.Render(" · e edit") +
-			helpStyle.Render(" · d delete · a add · w save · q quit"+dirty)
+			helpStyle.Render(" · d delete · w save · q quit"+dirty)
 	}
 }
 
