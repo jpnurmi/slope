@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/filepicker"
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	lipgloss "charm.land/lipgloss/v2"
 	"github.com/getsentry/slope/envelope"
@@ -28,6 +29,7 @@ type viewMode int
 const (
 	modeList viewMode = iota
 	modeInput
+	modeExport
 )
 
 type Model struct {
@@ -37,6 +39,7 @@ type Model struct {
 	selected int
 	mode     viewMode
 	picker   filepicker.Model
+	export   textinput.Model
 	dirty    bool
 	message  string
 	width    int
@@ -125,6 +128,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.mode = modeList
 				return m, nil
 			}
+		case modeExport:
+			return m.updateExport(msg)
 		}
 	}
 
@@ -161,6 +166,13 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.dirty = true
 			m.message = "Item deleted"
 			return m, m.printDump()
+		}
+	case keyX:
+		if m.itemCount() > 0 {
+			m.export = textinput.New()
+			m.export.SetValue(m.defaultExportFilename())
+			m.mode = modeExport
+			return m, m.export.Focus()
 		}
 	case keyA:
 		m.mode = modeInput
@@ -275,6 +287,46 @@ func (m Model) updatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m Model) defaultExportFilename() string {
+	item := m.envelope.Items[m.selected]
+	if item.Filename != "" {
+		return item.Filename
+	}
+	typ := item.Type
+	if typ == "" {
+		typ = "item"
+	}
+	if json.Valid(item.Payload) {
+		return typ + ".json"
+	}
+	return typ + ".bin"
+}
+
+func (m Model) updateExport(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case keyEnter:
+		filename := m.export.Value()
+		if filename == "" {
+			m.mode = modeList
+			return m, nil
+		}
+		item := m.envelope.Items[m.selected]
+		if err := os.WriteFile(filename, item.Payload, 0o644); err != nil {
+			m.message = errorStyle.Render("Error: " + err.Error())
+		} else {
+			m.message = savedStyle.Render("Exported " + filename)
+		}
+		m.mode = modeList
+		return m, nil
+	case keyEsc:
+		m.mode = modeList
+		return m, nil
+	}
+	var cmd tea.Cmd
+	m.export, cmd = m.export.Update(msg)
+	return m, cmd
+}
+
 func (m Model) View() tea.View {
 	var b strings.Builder
 
@@ -293,6 +345,8 @@ func (m Model) View() tea.View {
 	case modeInput:
 		b.WriteString(labelStyle.Render("Select file to attach") + "\n\n")
 		b.WriteString(m.picker.View() + "\n")
+	case modeExport:
+		b.WriteString(labelStyle.Render("Export to: ") + m.export.View() + "\n")
 	}
 
 	if m.message != "" {
@@ -315,6 +369,8 @@ func (m Model) helpText() string {
 	switch m.mode {
 	case modeInput:
 		return helpStyle.Render("↑/↓ navigate · enter select · esc cancel")
+	case modeExport:
+		return helpStyle.Render("enter confirm · esc cancel")
 	default:
 		dirty := ""
 		if m.dirty {
@@ -326,7 +382,7 @@ func (m Model) helpText() string {
 		}
 		return helpStyle.Render("↑/↓ navigate · enter view · a add") +
 			editStyle.Render(" · e edit") +
-			helpStyle.Render(" · d delete · w save · q quit"+dirty)
+			helpStyle.Render(" · x export · d delete · w save · q quit"+dirty)
 	}
 }
 
