@@ -172,10 +172,7 @@ func PrettyJSON(data json.RawMessage) string {
 
 func OneLineJSON(data json.RawMessage) string {
 	pretty := PrettyJSON(data)
-	result := strings.Join(strings.Fields(pretty), " ")
-	// Restore spaces after colons
-	result = strings.ReplaceAll(result, ": ", ": ")
-	return result
+	return strings.Join(strings.Fields(pretty), " ")
 }
 
 func compactJSON(data json.RawMessage) ([]byte, error) {
