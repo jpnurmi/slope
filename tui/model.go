@@ -237,10 +237,10 @@ func (m Model) viewInPager() tea.Cmd {
 func (m Model) editInEditor() tea.Cmd {
 	item := m.envelope.Items[m.selected]
 	index := m.selected
-	compact := envelope.IsCompactJSON(item.Payload)
+	isJSON := json.Valid(item.Payload)
 
 	ext := ".bin"
-	if compact {
+	if isJSON {
 		ext = ".json"
 	}
 
@@ -251,7 +251,7 @@ func (m Model) editInEditor() tea.Cmd {
 	tmpPath := tmpFile.Name()
 
 	payload := item.Payload
-	if compact {
+	if isJSON {
 		var buf bytes.Buffer
 		json.Indent(&buf, payload, "", "  ")
 		payload = buf.Bytes()
