@@ -153,15 +153,6 @@ func IsBinary(data []byte) bool {
 	return false
 }
 
-func IsCompactJSON(data []byte) bool {
-	if !json.Valid(data) {
-		return false
-	}
-	var buf bytes.Buffer
-	json.Compact(&buf, data)
-	return bytes.Equal(buf.Bytes(), data)
-}
-
 func PrettyJSON(data json.RawMessage) string {
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, data, "", "  "); err != nil {

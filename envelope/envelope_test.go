@@ -223,25 +223,6 @@ func TestOneLineJSON(t *testing.T) {
 	}
 }
 
-func TestIsCompactJSON(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want bool
-	}{
-		{"compact", `{"a":1}`, true},
-		{"pretty", "{\n  \"a\": 1\n}", false},
-		{"invalid", `not json`, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsCompactJSON([]byte(tt.in)); got != tt.want {
-				t.Errorf("got %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestUpdateLength(t *testing.T) {
 	header := json.RawMessage(`{"type":"event","length":10}`)
 	got, err := UpdateLength(header, 42)
