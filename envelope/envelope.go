@@ -171,8 +171,44 @@ func PrettyJSON(data json.RawMessage) string {
 }
 
 func OneLineJSON(data json.RawMessage) string {
-	pretty := PrettyJSON(data)
-	return strings.Join(strings.Fields(pretty), " ")
+	compact, err := compactJSON(data)
+	if err != nil {
+		return string(data)
+	}
+	var b strings.Builder
+	b.Grow(len(compact) * 2)
+	inString := false
+	for i, c := range compact {
+		if inString {
+			b.WriteByte(c)
+			if c == '"' && i > 0 && compact[i-1] != '\\' {
+				inString = false
+			}
+			continue
+		}
+		switch c {
+		case '"':
+			inString = true
+			b.WriteByte(c)
+		case '{', '[':
+			b.WriteByte(c)
+			if i+1 < len(compact) && compact[i+1] != '}' && compact[i+1] != ']' {
+				b.WriteByte(' ')
+			}
+		case '}', ']':
+			if i > 0 && compact[i-1] != '{' && compact[i-1] != '[' {
+				b.WriteByte(' ')
+			}
+			b.WriteByte(c)
+		case ':':
+			b.WriteString(": ")
+		case ',':
+			b.WriteString(", ")
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
 }
 
 func compactJSON(data json.RawMessage) ([]byte, error) {

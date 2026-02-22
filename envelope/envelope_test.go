@@ -209,6 +209,9 @@ func TestOneLineJSON(t *testing.T) {
 		{"compact", `{"a":1,"b":"hello"}`, `{ "a": 1, "b": "hello" }`},
 		{"pretty", "{\n  \"a\": 1\n}", `{ "a": 1 }`},
 		{"nested", `{"a":{"b":1}}`, `{ "a": { "b": 1 } }`},
+		{"spaces in string", `{"msg":"hello  world"}`, `{ "msg": "hello  world" }`},
+		{"empty object", `{}`, `{}`},
+		{"array", `{"a":[1,2]}`, `{ "a": [ 1, 2 ] }`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
