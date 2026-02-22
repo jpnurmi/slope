@@ -444,7 +444,10 @@ func (m *Model) addAttachment(path string) error {
 		om.Set("content_type", ct)
 	}
 
-	header, _ := json.Marshal(om)
+	header, err := json.Marshal(om)
+	if err != nil {
+		return fmt.Errorf("marshaling header: %w", err)
+	}
 
 	m.envelope.Items = append(m.envelope.Items, envelope.Item{
 		Header:   json.RawMessage(header),
