@@ -200,14 +200,27 @@ func (m Model) viewInPager() tea.Cmd {
 func (m Model) editInEditor() tea.Cmd {
 	item := m.envelope.Items[m.selected]
 	index := m.selected
+	compact := envelope.IsCompactJSON(item.Payload)
 
-	tmpFile, err := os.CreateTemp("", "slope-*.bin")
+	ext := ".bin"
+	if compact {
+		ext = ".json"
+	}
+
+	tmpFile, err := os.CreateTemp("", "slope-*"+ext)
 	if err != nil {
 		return func() tea.Msg { return editResultMsg{err: err} }
 	}
 	tmpPath := tmpFile.Name()
 
-	if _, err := tmpFile.Write(item.Payload); err != nil {
+	payload := item.Payload
+	if compact {
+		var buf bytes.Buffer
+		json.Indent(&buf, payload, "", "  ")
+		payload = buf.Bytes()
+	}
+
+	if _, err := tmpFile.Write(payload); err != nil {
 		tmpFile.Close()
 		os.Remove(tmpPath)
 		return func() tea.Msg { return editResultMsg{err: err} }
@@ -231,6 +244,11 @@ func (m Model) editInEditor() tea.Cmd {
 		data, err := os.ReadFile(tmpPath)
 		if err != nil {
 			return editResultMsg{err: err}
+		}
+		if json.Valid(data) {
+			var buf bytes.Buffer
+			json.Compact(&buf, data)
+			data = buf.Bytes()
 		}
 		return editResultMsg{index: index, payload: data}
 	})
