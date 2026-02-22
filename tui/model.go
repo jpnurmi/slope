@@ -99,7 +99,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.picker.SetHeight(msg.Height - 5)
+		m.picker.SetHeight(max(msg.Height-5, 1))
 	case editResultMsg:
 		if msg.err != nil {
 			m.message = errorStyle.Render("Error: " + msg.err.Error())

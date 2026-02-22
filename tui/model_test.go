@@ -288,4 +288,9 @@ func TestModelWindowResize(t *testing.T) {
 	if m.width != 120 {
 		t.Errorf("width = %d, want 120", m.width)
 	}
+
+	m = update(m, tea.WindowSizeMsg{Width: 20, Height: 3})
+	if m.picker.Height() < 1 {
+		t.Errorf("picker height = %d with tiny terminal, want >= 1", m.picker.Height())
+	}
 }
