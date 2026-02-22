@@ -3,6 +3,8 @@ package envelope
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -116,6 +118,76 @@ func TestIsBinary(t *testing.T) {
 	}
 	if !IsBinary([]byte{0xff, 0xfe}) {
 		t.Error("invalid UTF-8 should be binary")
+	}
+}
+
+func TestParseTestdata(t *testing.T) {
+	tests := []struct {
+		file      string
+		wantErr   bool
+		itemCount int
+		types     []string
+	}{
+		{"binary_attachment.envelope", false, 1, []string{"attachment"}},
+		{"breakpad.envelope", false, 4, []string{"event", "session", "attachment", "attachment"}},
+		{"empty_headers_eof.envelope", false, 1, []string{"session"}},
+		{"implicit_length.envelope", false, 1, []string{"attachment"}},
+		{"inproc.envelope", false, 2, []string{"event", "session"}},
+		{"invalid.envelope", true, 0, nil},
+		{"sigsegv.envelope", false, 1, []string{"event"}},
+		{"two_empty_attachments.envelope", false, 2, []string{"attachment", "attachment"}},
+		{"two_items.envelope", false, 2, []string{"attachment", "event"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.file, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join("testdata", tt.file))
+			if err != nil {
+				t.Fatalf("reading file: %v", err)
+			}
+
+			env, err := Parse(bytes.NewReader(data))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(env.Items) != tt.itemCount {
+				t.Fatalf("item count = %d, want %d", len(env.Items), tt.itemCount)
+			}
+			for i, wantType := range tt.types {
+				if env.Items[i].Type != wantType {
+					t.Errorf("item %d type = %q, want %q", i, env.Items[i].Type, wantType)
+				}
+			}
+
+			// Round-trip: Serialize → Parse
+			var buf bytes.Buffer
+			if err := env.Serialize(&buf); err != nil {
+				t.Fatalf("serialize error: %v", err)
+			}
+
+			env2, err := Parse(&buf)
+			if err != nil {
+				t.Fatalf("re-parse error: %v", err)
+			}
+			if len(env2.Items) != len(env.Items) {
+				t.Fatalf("round-trip item count = %d, want %d", len(env2.Items), len(env.Items))
+			}
+			for i := range env.Items {
+				if env2.Items[i].Type != env.Items[i].Type {
+					t.Errorf("round-trip item %d type = %q, want %q", i, env2.Items[i].Type, env.Items[i].Type)
+				}
+				if !bytes.Equal(env2.Items[i].Payload, env.Items[i].Payload) {
+					t.Errorf("round-trip item %d payload mismatch (len %d vs %d)", i, len(env2.Items[i].Payload), len(env.Items[i].Payload))
+				}
+			}
+		})
 	}
 }
 
