@@ -422,12 +422,23 @@ func (m Model) helpText() string {
 }
 
 func (m *Model) writeFile() error {
-	f, err := os.Create(m.filePath)
+	dir := filepath.Dir(m.filePath)
+	tmp, err := os.CreateTemp(dir, ".slope-*")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return m.envelope.Serialize(f)
+	tmpPath := tmp.Name()
+
+	if err := m.envelope.Serialize(tmp); err != nil {
+		tmp.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return os.Rename(tmpPath, m.filePath)
 }
 
 func (m *Model) addAttachment(path string) error {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -195,6 +196,34 @@ func TestModelSave(t *testing.T) {
 	}
 	if string(parsed.Items[0].Payload) != `{"key":"val"}` {
 		t.Errorf("saved payload = %q, want %q", parsed.Items[0].Payload, `{"key":"val"}`)
+	}
+}
+
+func TestModelSavePreservesFileOnError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.envelope")
+	original := []byte("original content")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	env := &envelope.Envelope{
+		Header: json.RawMessage(`not valid json`),
+	}
+	m := NewModel(env, path, int64(len(original)))
+	m.dirty = true
+
+	m = update(m, key('w'))
+	if m.message == "" {
+		t.Fatal("expected error message from failed save")
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(data, original) {
+		t.Errorf("file was modified after failed save: got %q", data)
 	}
 }
 
