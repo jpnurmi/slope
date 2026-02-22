@@ -169,14 +169,6 @@ func OneLineJSON(data json.RawMessage) string {
 	return result
 }
 
-func JSONFieldCount(data json.RawMessage) int {
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal(data, &m); err != nil {
-		return 0
-	}
-	return len(m)
-}
-
 func compactJSON(data json.RawMessage) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := json.Compact(&buf, data); err != nil {

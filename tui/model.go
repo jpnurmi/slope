@@ -77,12 +77,12 @@ func (m Model) buildDump() string {
 		fmt.Sprintf("%s · %s", filepath.Base(m.filePath), formatSize(int(m.fileSize))),
 	) + "\n")
 	b.WriteString(sep + "\n")
-	b.WriteString(formatHeader(m.envelope.Header) + "\n")
+	b.WriteString(formatHeader(m.envelope.Header, m.width) + "\n")
 
 	for i, item := range m.envelope.Items {
 		b.WriteString("\n" + labelStyle.Render(itemLabel(i, item)) + "\n")
 		b.WriteString(sep + "\n")
-		b.WriteString(formatHeader(item.Header) + "\n")
+		b.WriteString(formatHeader(item.Header, m.width) + "\n")
 	}
 	return b.String()
 }

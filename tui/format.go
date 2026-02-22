@@ -3,8 +3,10 @@ package tui
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/charmbracelet/x/term"
 	"github.com/getsentry/slope/envelope"
 )
 
@@ -17,9 +19,15 @@ func itemLabel(idx int, item envelope.Item) string {
 	return strings.Join(parts, " · ")
 }
 
-func formatHeader(header json.RawMessage) string {
-	if envelope.JSONFieldCount(header) <= 2 {
-		return highlightJSON(envelope.OneLineJSON(header))
+func formatHeader(header json.RawMessage, width int) string {
+	oneLine := envelope.OneLineJSON(header)
+	if width <= 0 {
+		if w, _, err := term.GetSize(os.Stdout.Fd()); err == nil {
+			width = w
+		}
+	}
+	if width <= 0 || len(oneLine) <= width {
+		return highlightJSON(oneLine)
 	}
 	return highlightJSON(envelope.PrettyJSON(header))
 }
