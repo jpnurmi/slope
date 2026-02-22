@@ -13,7 +13,7 @@ A TUI viewer and editor for [Sentry envelopes](https://develop.sentry.dev/sdk/fo
 - Selectable item list with payload viewing via pager
 - JSON payloads are pretty-printed and highlighted
 - Binary payloads are shown as hex dump
-- Add and delete envelope items
+- Add, delete, and export envelope items
 - Save modified envelopes back to file
 
 ## Install
@@ -42,6 +42,7 @@ slope <file.envelope>
 | `Enter` | View item payload in pager |
 | `e` | Edit item payload in `$EDITOR` |
 | `a` | Add attachment |
+| `x` | Export item payload to file |
 | `d` | Delete selected item |
 | `w` | Save to file |
 | `q` | Quit |
