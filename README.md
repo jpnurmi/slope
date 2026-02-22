@@ -1,5 +1,8 @@
 # slope
 
+[![Go](https://img.shields.io/github/go-mod/go-version/jpnurmi/slope)](https://go.dev/)
+[![CI](https://github.com/jpnurmi/slope/actions/workflows/ci.yml/badge.svg)](https://github.com/jpnurmi/slope/actions/workflows/ci.yml)
+
 A TUI viewer and editor for [Sentry envelopes](https://develop.sentry.dev/sdk/foundations/data-model/envelopes/).
 
 ![screenshot](screenshot.png)
