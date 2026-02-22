@@ -10,6 +10,7 @@ const (
 	keyQ     = "q"
 	keyD     = "d"
 	keyA     = "a"
+	keyE     = "e"
 	keyW     = "w"
 	keyCtrlC = "ctrl+c"
 )

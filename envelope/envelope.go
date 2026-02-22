@@ -8,6 +8,8 @@ import (
 	"io"
 	"strings"
 	"unicode/utf8"
+
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 )
 
 type Envelope struct {
@@ -122,7 +124,7 @@ func (env *Envelope) Serialize(w io.Writer) error {
 	// Write items
 	for _, item := range env.Items {
 		// Update length in header
-		header, err := updateLength(item.Header, len(item.Payload))
+		header, err := UpdateLength(item.Header, len(item.Payload))
 		if err != nil {
 			return fmt.Errorf("updating item header: %w", err)
 		}
@@ -183,12 +185,11 @@ func compactJSON(data json.RawMessage) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func updateLength(header json.RawMessage, length int) (json.RawMessage, error) {
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal(header, &m); err != nil {
+func UpdateLength(header json.RawMessage, length int) (json.RawMessage, error) {
+	om := orderedmap.New[string, any]()
+	if err := json.Unmarshal(header, om); err != nil {
 		return nil, err
 	}
-	lengthBytes, _ := json.Marshal(length)
-	m["length"] = json.RawMessage(lengthBytes)
-	return json.Marshal(m)
+	om.Set("length", length)
+	return json.Marshal(om)
 }

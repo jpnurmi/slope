@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"mime"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +14,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 	lipgloss "charm.land/lipgloss/v2"
 	"github.com/getsentry/slope/envelope"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 )
+
+type editResultMsg struct {
+	index   int
+	payload []byte
+	err     error
+}
 
 type viewMode int
 
@@ -87,6 +96,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.picker.SetHeight(msg.Height - 5)
+	case editResultMsg:
+		if msg.err != nil {
+			m.message = errorStyle.Render("Error: " + msg.err.Error())
+			return m, nil
+		}
+		item := &m.envelope.Items[msg.index]
+		if bytes.Equal(item.Payload, msg.payload) {
+			return m, nil
+		}
+		item.Payload = msg.payload
+		header, err := envelope.UpdateLength(item.Header, len(msg.payload))
+		if err != nil {
+			m.message = errorStyle.Render("Error: " + err.Error())
+			return m, nil
+		}
+		item.Header = header
+		m.dirty = true
+		m.message = savedStyle.Render("Payload updated")
+		return m, m.printDump()
 	case tea.KeyPressMsg:
 		m.message = ""
 		switch m.mode {
@@ -119,6 +147,10 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case keyEnter:
 		if m.itemCount() > 0 {
 			return m, m.viewInPager()
+		}
+	case keyE:
+		if m.itemCount() > 0 {
+			return m, m.editInEditor()
 		}
 	case keyD:
 		if m.itemCount() > 0 {
@@ -163,6 +195,45 @@ func (m Model) viewInPager() tea.Cmd {
 	c := exec.Command("less", "-R")
 	c.Stdin = strings.NewReader(content)
 	return tea.ExecProcess(c, func(err error) tea.Msg { return nil })
+}
+
+func (m Model) editInEditor() tea.Cmd {
+	item := m.envelope.Items[m.selected]
+	index := m.selected
+
+	tmpFile, err := os.CreateTemp("", "slope-*.bin")
+	if err != nil {
+		return func() tea.Msg { return editResultMsg{err: err} }
+	}
+	tmpPath := tmpFile.Name()
+
+	if _, err := tmpFile.Write(item.Payload); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+		return func() tea.Msg { return editResultMsg{err: err} }
+	}
+	tmpFile.Close()
+
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = os.Getenv("VISUAL")
+	}
+	if editor == "" {
+		editor = "nano"
+	}
+
+	c := exec.Command(editor, tmpPath)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		defer os.Remove(tmpPath)
+		if err != nil {
+			return editResultMsg{err: err}
+		}
+		data, err := os.ReadFile(tmpPath)
+		if err != nil {
+			return editResultMsg{err: err}
+		}
+		return editResultMsg{index: index, payload: data}
+	})
 }
 
 func (m Model) updatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -231,7 +302,7 @@ func (m Model) helpText() string {
 		if m.dirty {
 			dirty = " · (modified)"
 		}
-		return helpStyle.Render("↑/↓ navigate · enter select · d delete · a add · w save · q quit" + dirty)
+		return helpStyle.Render("↑/↓ navigate · enter view · e edit · d delete · a add · w save · q quit" + dirty)
 	}
 }
 
@@ -250,13 +321,15 @@ func (m *Model) addAttachment(path string) error {
 		return fmt.Errorf("reading %s: %w", path, err)
 	}
 	basename := filepath.Base(path)
+	om := orderedmap.New[string, any]()
+	om.Set("type", "attachment")
+	om.Set("length", len(data))
+	om.Set("filename", basename)
+	if ct := mime.TypeByExtension(filepath.Ext(path)); ct != "" {
+		om.Set("content_type", ct)
+	}
 
-	header, _ := json.Marshal(map[string]any{
-		"type":         "attachment",
-		"length":       len(data),
-		"filename":     basename,
-		"content_type": "application/octet-stream",
-	})
+	header, _ := json.Marshal(om)
 
 	m.envelope.Items = append(m.envelope.Items, envelope.Item{
 		Header:   json.RawMessage(header),

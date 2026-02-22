@@ -1,6 +1,6 @@
 # slope
 
-A terminal tool for inspecting and editing [Sentry envelopes](https://develop.sentry.dev/sdk/foundations/data-model/envelopes/).
+A TUI viewer and editor for [Sentry envelopes](https://develop.sentry.dev/sdk/foundations/data-model/envelopes/).
 
 ![screenshot](screenshot.png)
 
@@ -37,6 +37,7 @@ slope <file.envelope>
 |-----|--------|
 | `j` / `k` / `Up` / `Down` | Navigate items |
 | `Enter` | View item payload in pager |
+| `e` | Edit item payload in `$EDITOR` |
 | `a` | Add attachment |
 | `d` | Delete selected item |
 | `w` | Save to file |
