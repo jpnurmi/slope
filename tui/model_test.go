@@ -197,6 +197,14 @@ func TestModelSave(t *testing.T) {
 	if string(parsed.Items[0].Payload) != `{"key":"val"}` {
 		t.Errorf("saved payload = %q, want %q", parsed.Items[0].Payload, `{"key":"val"}`)
 	}
+
+	fi, err := os.Stat(tmp.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.fileSize != fi.Size() {
+		t.Errorf("fileSize = %d, want %d", m.fileSize, fi.Size())
+	}
 }
 
 func TestModelSavePreservesFileOnError(t *testing.T) {

@@ -190,11 +190,14 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if !m.dirty {
 			return m, nil
 		}
-		if err := m.writeFile(); err != nil {
+		size, err := m.writeFile()
+		if err != nil {
 			m.message = errorStyle.Render("Error: " + err.Error())
 		} else {
 			m.dirty = false
+			m.fileSize = size
 			m.message = savedStyle.Render("Saved " + m.filePath)
+			return m, m.printDump()
 		}
 	case keyQ, keyCtrlC:
 		if m.dirty {
@@ -421,24 +424,31 @@ func (m Model) helpText() string {
 	}
 }
 
-func (m *Model) writeFile() error {
+func (m *Model) writeFile() (int64, error) {
 	dir := filepath.Dir(m.filePath)
 	tmp, err := os.CreateTemp(dir, ".slope-*")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	tmpPath := tmp.Name()
 
 	if err := m.envelope.Serialize(tmp); err != nil {
 		tmp.Close()
 		os.Remove(tmpPath)
-		return err
+		return 0, err
 	}
+	fi, err := tmp.Stat()
+	if err != nil {
+		tmp.Close()
+		os.Remove(tmpPath)
+		return 0, err
+	}
+	size := fi.Size()
 	if err := tmp.Close(); err != nil {
 		os.Remove(tmpPath)
-		return err
+		return 0, err
 	}
-	return os.Rename(tmpPath, m.filePath)
+	return size, os.Rename(tmpPath, m.filePath)
 }
 
 func (m *Model) addAttachment(path string) error {
