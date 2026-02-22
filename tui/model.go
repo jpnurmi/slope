@@ -149,7 +149,7 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, m.viewInPager()
 		}
 	case keyE:
-		if m.itemCount() > 0 {
+		if m.itemCount() > 0 && !envelope.IsBinary(m.envelope.Items[m.selected].Payload) {
 			return m, m.editInEditor()
 		}
 	case keyD:
@@ -302,7 +302,13 @@ func (m Model) helpText() string {
 		if m.dirty {
 			dirty = " · (modified)"
 		}
-		return helpStyle.Render("↑/↓ navigate · enter view · e edit · d delete · a add · w save · q quit" + dirty)
+		editStyle := helpStyle
+		if m.itemCount() == 0 || envelope.IsBinary(m.envelope.Items[m.selected].Payload) {
+			editStyle = helpDisabledStyle
+		}
+		return helpStyle.Render("↑/↓ navigate · enter view") +
+			editStyle.Render(" · e edit") +
+			helpStyle.Render(" · d delete · a add · w save · q quit"+dirty)
 	}
 }
 
