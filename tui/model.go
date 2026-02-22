@@ -250,7 +250,7 @@ func (m Model) editInEditor() tea.Cmd {
 		editor = "nano"
 	}
 
-	c := exec.Command(editor, tmpPath)
+	c := exec.Command("sh", "-c", editor+" \"$1\"", "--", tmpPath)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		defer os.Remove(tmpPath)
 		if err != nil {
