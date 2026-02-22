@@ -2,6 +2,7 @@ package tui
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"mime"
@@ -216,7 +217,7 @@ func (m Model) viewInPager() tea.Cmd {
 	if len(item.Payload) == 0 {
 		content = "(empty payload)\n"
 	} else if envelope.IsBinary(item.Payload) {
-		content = hexDump(item.Payload)
+		content = hex.Dump(item.Payload)
 	} else if json.Valid(item.Payload) {
 		content = highlightJSON(envelope.PrettyJSON(json.RawMessage(item.Payload))) + "\n"
 	} else {
