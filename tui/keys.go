@@ -13,5 +13,6 @@ const (
 	keyE     = "e"
 	keyW     = "w"
 	keyX     = "x"
+	keyY     = "y"
 	keyCtrlC = "ctrl+c"
 )

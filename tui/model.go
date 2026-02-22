@@ -30,6 +30,7 @@ const (
 	modeList viewMode = iota
 	modeInput
 	modeExport
+	modeConfirmQuit
 )
 
 type Model struct {
@@ -130,6 +131,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case modeExport:
 			return m.updateExport(msg)
+		case modeConfirmQuit:
+			switch msg.String() {
+			case keyY:
+				return m, tea.Quit
+			default:
+				m.mode = modeList
+				return m, nil
+			}
 		}
 	}
 
@@ -188,6 +197,10 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.message = savedStyle.Render("Saved " + m.filePath)
 		}
 	case keyQ, keyCtrlC:
+		if m.dirty {
+			m.mode = modeConfirmQuit
+			return m, nil
+		}
 		return m, tea.Quit
 	}
 	return m, nil
@@ -359,6 +372,8 @@ func (m Model) View() tea.View {
 		b.WriteString(m.picker.View() + "\n")
 	case modeExport:
 		b.WriteString(labelStyle.Render("Export to: ") + m.export.View() + "\n")
+	case modeConfirmQuit:
+		b.WriteString(errorStyle.Render("Unsaved changes. Quit anyway?") + "\n")
 	}
 
 	if m.message != "" {
@@ -383,6 +398,8 @@ func (m Model) helpText() string {
 		return helpStyle.Render("↑/↓ navigate · enter select · esc cancel")
 	case modeExport:
 		return helpStyle.Render("enter confirm · esc cancel")
+	case modeConfirmQuit:
+		return helpStyle.Render("y quit · any key cancel")
 	default:
 		dirty := ""
 		if m.dirty {
