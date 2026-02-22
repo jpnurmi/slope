@@ -199,3 +199,63 @@ func TestPrettyJSON(t *testing.T) {
 		t.Errorf("got:\n%s\nwant:\n%s", pretty, expected)
 	}
 }
+
+func TestOneLineJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"compact", `{"a":1,"b":"hello"}`, `{ "a": 1, "b": "hello" }`},
+		{"pretty", "{\n  \"a\": 1\n}", `{ "a": 1 }`},
+		{"nested", `{"a":{"b":1}}`, `{ "a": { "b": 1 } }`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := OneLineJSON(json.RawMessage(tt.in))
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsCompactJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want bool
+	}{
+		{"compact", `{"a":1}`, true},
+		{"pretty", "{\n  \"a\": 1\n}", false},
+		{"invalid", `not json`, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsCompactJSON([]byte(tt.in)); got != tt.want {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUpdateLength(t *testing.T) {
+	header := json.RawMessage(`{"type":"event","length":10}`)
+	got, err := UpdateLength(header, 42)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var parsed struct {
+		Type   string `json:"type"`
+		Length int    `json:"length"`
+	}
+	if err := json.Unmarshal(got, &parsed); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if parsed.Type != "event" {
+		t.Errorf("type = %q, want %q", parsed.Type, "event")
+	}
+	if parsed.Length != 42 {
+		t.Errorf("length = %d, want 42", parsed.Length)
+	}
+}
