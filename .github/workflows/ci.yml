@@ -23,4 +23,9 @@ jobs:
 
       - run: go vet ./...
 
-      - run: go test ./...
+      - run: go test -coverprofile=coverage.out ./...
+
+      - uses: codecov/codecov-action@v5
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          files: coverage.out

@@ -2,6 +2,7 @@
 
 [![Go](https://img.shields.io/github/go-mod/go-version/jpnurmi/slope)](https://go.dev/)
 [![CI](https://github.com/jpnurmi/slope/actions/workflows/ci.yml/badge.svg)](https://github.com/jpnurmi/slope/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/jpnurmi/slope/branch/main/graph/badge.svg)](https://codecov.io/gh/jpnurmi/slope)
 
 A TUI viewer and editor for [Sentry envelopes](https://develop.sentry.dev/sdk/foundations/data-model/envelopes/).
 
