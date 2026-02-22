@@ -606,3 +606,35 @@ func TestFormatHeader(t *testing.T) {
 		t.Errorf("long JSON narrow width should be multi-line, got %q", result)
 	}
 }
+
+func TestWriteFileError(t *testing.T) {
+	m := testModel(1)
+	m.filePath = "/nonexistent/dir/file.envelope"
+	m.dirty = true
+
+	m = update(m, key('w'))
+	if !strings.Contains(m.message, "Error") {
+		t.Errorf("expected error message, got %q", m.message)
+	}
+}
+
+func TestAddAttachmentError(t *testing.T) {
+	m := testModel(0)
+	err := m.addAttachment("/nonexistent/file.txt")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestEditResultUpdateLengthError(t *testing.T) {
+	m := testModel(0)
+	m.envelope.Items = []envelope.Item{{
+		Header:  json.RawMessage("not json"),
+		Payload: []byte("old"),
+	}}
+
+	m = update(m, editResultMsg{index: 0, payload: []byte("new")})
+	if !strings.Contains(m.message, "Error") {
+		t.Errorf("expected error message, got %q", m.message)
+	}
+}

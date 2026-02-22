@@ -3,6 +3,7 @@ package envelope
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -269,5 +270,87 @@ func TestOneLineJSONEscapedQuotes(t *testing.T) {
 	want := `{ "msg": "say \"hi\"" }`
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+type errReader struct{}
+
+func (errReader) Read([]byte) (int, error) {
+	return 0, errors.New("read error")
+}
+
+func TestParseReadError(t *testing.T) {
+	_, err := Parse(errReader{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestParseNonNewlineAfterPayload(t *testing.T) {
+	// After reading 2-byte payload "{}", next byte is "{" (not newline), triggering UnreadByte
+	input := "{}\n" +
+		`{"type":"event","length":2}` + "\n" +
+		`{}{"type":"session"}` + "\n" +
+		`{"sid":"x"}` + "\n"
+
+	env, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(env.Items) != 2 {
+		t.Fatalf("items = %d, want 2", len(env.Items))
+	}
+	if env.Items[1].Type != "session" {
+		t.Errorf("item 1 type = %q, want session", env.Items[1].Type)
+	}
+}
+
+func TestSerializeErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		env  Envelope
+	}{
+		{
+			"invalid envelope header",
+			Envelope{Header: json.RawMessage("not json")},
+		},
+		{
+			"invalid item header",
+			Envelope{
+				Header: json.RawMessage(`{}`),
+				Items:  []Item{{Header: json.RawMessage("not json"), Payload: []byte("x")}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := tt.env.Serialize(&buf); err == nil {
+				t.Error("expected error, got nil")
+			}
+		})
+	}
+}
+
+func TestPrettyJSONInvalid(t *testing.T) {
+	raw := json.RawMessage("not json")
+	got := PrettyJSON(raw)
+	if got != "not json" {
+		t.Errorf("got %q, want %q", got, "not json")
+	}
+}
+
+func TestOneLineJSONInvalid(t *testing.T) {
+	raw := json.RawMessage("not json")
+	got := OneLineJSON(raw)
+	if got != "not json" {
+		t.Errorf("got %q, want %q", got, "not json")
+	}
+}
+
+func TestUpdateLengthInvalid(t *testing.T) {
+	_, err := UpdateLength(json.RawMessage("not json"), 42)
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }
