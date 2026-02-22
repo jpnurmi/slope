@@ -178,6 +178,9 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.mode = modeInput
 		return m, m.picker.Init()
 	case keyW:
+		if !m.dirty {
+			return m, nil
+		}
 		if err := m.writeFile(); err != nil {
 			m.message = errorStyle.Render("Error: " + err.Error())
 		} else {
@@ -380,9 +383,15 @@ func (m Model) helpText() string {
 		if m.itemCount() == 0 || envelope.IsBinary(m.envelope.Items[m.selected].Payload) {
 			editStyle = helpDisabledStyle
 		}
+		saveStyle := helpStyle
+		if !m.dirty {
+			saveStyle = helpDisabledStyle
+		}
 		return helpStyle.Render("↑/↓ navigate · enter view · a add") +
 			editStyle.Render(" · e edit") +
-			helpStyle.Render(" · x export · d delete · w save · q quit"+dirty)
+			helpStyle.Render(" · x export · d delete") +
+			saveStyle.Render(" · w save") +
+			helpStyle.Render(" · q quit"+dirty)
 	}
 }
 
