@@ -1,3 +1,4 @@
 slope
+slope.exe
 *.envelope
 !envelope/testdata/*.envelope

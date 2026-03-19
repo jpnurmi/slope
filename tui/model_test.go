@@ -328,9 +328,39 @@ func TestListEditBinary(t *testing.T) {
 
 func TestListEnterViewsItem(t *testing.T) {
 	m := testModel(1)
+	m = update(m, specialKey(tea.KeyEnter))
+	if m.mode != modePager {
+		t.Errorf("enter with items: mode = %d, want modePager", m.mode)
+	}
+}
+
+func TestListEnterExternalPager(t *testing.T) {
+	t.Setenv("PAGER", testPagerOK)
+	m := testModel(1)
 	_, cmd := m.Update(specialKey(tea.KeyEnter))
 	if cmd == nil {
-		t.Error("enter with items should return a cmd")
+		t.Error("enter with PAGER set should return a cmd")
+	}
+}
+
+func TestPagerQuit(t *testing.T) {
+	m := testModel(1)
+	m = update(m, specialKey(tea.KeyEnter))
+	if m.mode != modePager {
+		t.Fatalf("mode = %d, want modePager", m.mode)
+	}
+	m = update(m, key('q'))
+	if m.mode != modeList {
+		t.Errorf("q in pager: mode = %d, want modeList", m.mode)
+	}
+}
+
+func TestPagerEsc(t *testing.T) {
+	m := testModel(1)
+	m = update(m, specialKey(tea.KeyEnter))
+	m = update(m, specialKey(tea.KeyEscape))
+	if m.mode != modeList {
+		t.Errorf("esc in pager: mode = %d, want modeList", m.mode)
 	}
 }
 
