@@ -105,7 +105,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.pager.SetWidth(msg.Width)
-		m.pager.SetHeight(max(msg.Height-2, 1))
+		m.pager.SetHeight(max(msg.Height-3, 1))
 		m.picker.SetHeight(max(msg.Height-5, 1))
 	case editResultMsg:
 		if msg.err != nil {
@@ -179,7 +179,7 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			}
 			m.pager.SetWidth(m.width)
-			m.pager.SetHeight(max(m.height-2, 1))
+			m.pager.SetHeight(max(m.height-3, 1))
 			m.pager.SetContent(m.pagerContent())
 			m.pager.GotoTop()
 			m.mode = modePager
