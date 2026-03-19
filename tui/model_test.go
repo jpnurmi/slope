@@ -328,9 +328,18 @@ func TestListEditBinary(t *testing.T) {
 
 func TestListEnterViewsItem(t *testing.T) {
 	m := testModel(1)
-	m = update(m, specialKey(tea.KeyEnter))
-	if m.mode != modePager {
-		t.Errorf("enter with items: mode = %d, want modePager", m.mode)
+	if defaultPager == "" {
+		// built-in pager (Windows)
+		m = update(m, specialKey(tea.KeyEnter))
+		if m.mode != modePager {
+			t.Errorf("enter with items: mode = %d, want modePager", m.mode)
+		}
+	} else {
+		// external pager (Unix)
+		_, cmd := m.Update(specialKey(tea.KeyEnter))
+		if cmd == nil {
+			t.Error("enter with items should return a cmd")
+		}
 	}
 }
 
@@ -343,21 +352,26 @@ func TestListEnterExternalPager(t *testing.T) {
 	}
 }
 
-func TestPagerQuit(t *testing.T) {
+func TestBuiltinPagerQuit(t *testing.T) {
+	t.Setenv("PAGER", "")
 	m := testModel(1)
-	m = update(m, specialKey(tea.KeyEnter))
-	if m.mode != modePager {
-		t.Fatalf("mode = %d, want modePager", m.mode)
-	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+	m.pager.SetContent(m.pagerContent())
+	m.pager.GotoTop()
+	m.mode = modePager
+
 	m = update(m, key('q'))
 	if m.mode != modeList {
 		t.Errorf("q in pager: mode = %d, want modeList", m.mode)
 	}
 }
 
-func TestPagerEsc(t *testing.T) {
+func TestBuiltinPagerEsc(t *testing.T) {
+	t.Setenv("PAGER", "")
 	m := testModel(1)
-	m = update(m, specialKey(tea.KeyEnter))
+	m.mode = modePager
+
 	m = update(m, specialKey(tea.KeyEscape))
 	if m.mode != modeList {
 		t.Errorf("esc in pager: mode = %d, want modeList", m.mode)
