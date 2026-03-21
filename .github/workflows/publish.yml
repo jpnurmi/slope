@@ -61,7 +61,7 @@ jobs:
       - name: Extract release notes
         run: |
           VERSION="${{ steps.version.outputs.value }}"
-          awk "/^## ${VERSION}/{found=1; next} /^## /{found=0} found" CHANGELOG.md > release-notes.md
+          awk "/^## ${VERSION}/{found=1; next} /^## /{found=0} found" CHANGELOG.md > "${{ runner.temp }}/release-notes.md"
 
       - uses: actions/setup-go@v6
         with:
@@ -69,6 +69,6 @@ jobs:
 
       - uses: goreleaser/goreleaser-action@v6
         with:
-          args: release --clean --release-notes=release-notes.md
+          args: release --clean --release-notes=${{ runner.temp }}/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
