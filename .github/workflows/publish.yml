@@ -15,10 +15,13 @@ jobs:
   tag:
     if: github.event.pull_request.merged && startsWith(github.event.pull_request.head.ref, 'release/')
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - uses: actions/checkout@v6
 
       - name: Tag release
+        id: tag
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
@@ -26,18 +29,29 @@ jobs:
           git tag "v${VERSION}"
           git push origin "v${VERSION}"
           git push origin --delete "$BRANCH" || true
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
   publish:
-    if: github.event_name == 'push'
+    if: always() && !cancelled() && !failure()
+    needs: [tag]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${{ needs.tag.outputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Extract release notes
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.version.outputs.value }}"
           awk "/^## ${VERSION}/{found=1; next} /^## /{found=0} found" CHANGELOG.md > release-notes.md
 
       - uses: actions/setup-go@v6
