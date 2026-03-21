@@ -10,25 +10,23 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "usage: slope <file.envelope>\n")
-		fmt.Fprintf(os.Stderr, "       slope header <file> [0-N]\n")
-		fmt.Fprintf(os.Stderr, "       slope payload <file> [0-N]\n")
-		os.Exit(1)
-	}
-
-	var err error
-	switch os.Args[1] {
-	case "header":
-		err = cmdHeader(os.Args[2:])
-	case "payload":
-		err = cmdPayload(os.Args[2:])
-	default:
-		err = runTUI(os.Args[1])
-	}
-	if err != nil {
+	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func run(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: slope <file.envelope>\n       slope header <file> [0-N]\n       slope payload <file> [0-N]")
+	}
+	switch args[0] {
+	case "header":
+		return cmdHeader(args[1:])
+	case "payload":
+		return cmdPayload(args[1:])
+	default:
+		return runTUI(args[0])
 	}
 }
 

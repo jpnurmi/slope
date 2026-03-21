@@ -10,6 +10,40 @@ import (
 
 const testEnvelope = "envelope/testdata/breakpad.envelope"
 
+func TestRunNoArgs(t *testing.T) {
+	if err := run(nil); err == nil {
+		t.Fatal("expected error for no args")
+	}
+}
+
+func TestRunHeader(t *testing.T) {
+	out := captureStdout(t, func() {
+		if err := run([]string{"header", testEnvelope}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, `"dsn"`) {
+		t.Errorf("expected dsn in output, got %q", out[:min(len(out), 100)])
+	}
+}
+
+func TestRunPayload(t *testing.T) {
+	out := captureStdout(t, func() {
+		if err := run([]string{"payload", testEnvelope, "1"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "event_id") {
+		t.Errorf("expected event payload, got %q", out[:min(len(out), 100)])
+	}
+}
+
+func TestRunTUIBadFile(t *testing.T) {
+	if err := run([]string{"nonexistent"}); err == nil {
+		t.Fatal("expected error for nonexistent file")
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout
