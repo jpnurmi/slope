@@ -18,6 +18,7 @@ jobs:
           fetch-depth: 0
 
       - name: Tag release
+        id: tag
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
@@ -25,6 +26,12 @@ jobs:
           git tag "v${VERSION}"
           git push origin "v${VERSION}"
           git push origin --delete "$BRANCH"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract release notes
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          awk "/^## ${VERSION}/{found=1; next} /^## /{found=0} found" CHANGELOG.md > release-notes.md
 
       - uses: actions/setup-go@v6
         with:
@@ -32,6 +39,6 @@ jobs:
 
       - uses: goreleaser/goreleaser-action@v6
         with:
-          args: release --clean
+          args: release --clean --release-notes=release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

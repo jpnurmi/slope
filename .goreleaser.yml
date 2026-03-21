@@ -24,17 +24,4 @@ checksum:
   name_template: checksums.txt
 
 changelog:
-  sort: asc
-  groups:
-    - title: Features
-      regexp: '^.*?feat(\(.+\))??!?:.+$'
-    - title: Bug Fixes
-      regexp: '^.*?fix(\(.+\))??!?:.+$'
-    - title: Other
-      order: 999
-  filters:
-    exclude:
-      - '^test:'
-      - '^ci:'
-      - '^chore:'
-      - '^release:'
+  disable: true
