@@ -1,0 +1,40 @@
+version: 2
+
+builds:
+  - binary: slope
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+    - title: Bug Fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - '^release:'

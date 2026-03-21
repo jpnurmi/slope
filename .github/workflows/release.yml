@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. v1.2.3)"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Parse version
+        id: version
+        run: echo "value=${INPUT#v}" >> "$GITHUB_OUTPUT"
+        env:
+          INPUT: ${{ github.event.inputs.version }}
+
+      - uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag v${{ steps.version.outputs.value }}
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Create release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          BRANCH="release/${VERSION}"
+          git checkout -b "$BRANCH"
+          git add CHANGELOG.md
+          git commit -m "release: v${VERSION}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "release: v${VERSION}" \
+            --body "Update CHANGELOG.md for v${VERSION}." \
+            --base main \
+            --head "$BRANCH"
