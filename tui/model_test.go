@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/getsentry/slope/envelope"
 )
 
@@ -58,11 +57,7 @@ func update(m Model, msgs ...tea.Msg) Model {
 }
 
 func viewText(m Model) string {
-	v := m.View()
-	if ss, ok := v.Content.(*uv.StyledString); ok {
-		return ss.Text
-	}
-	return ""
+	return m.View().Content
 }
 
 func TestModelNavigation(t *testing.T) {
