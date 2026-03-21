@@ -14,6 +14,7 @@ A TUI viewer and editor for [Sentry envelopes](https://develop.sentry.dev/sdk/fo
 - Pretty-formatted, syntax-highlighted JSON headers
 - Selectable item list with payload viewing via pager
 - JSON payloads are pretty-printed and highlighted
+- Image attachments rendered inline with ANSI half-block art
 - Binary payloads are shown as hex dump
 - Add, delete, and export envelope items
 - Save modified envelopes back to file
