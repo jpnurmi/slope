@@ -371,6 +371,17 @@ func TestSerializeItems(t *testing.T) {
 	}
 }
 
+func TestSerializeItemsError(t *testing.T) {
+	env := Envelope{
+		Header: json.RawMessage(`{}`),
+		Items:  []Item{{Header: json.RawMessage("not json"), Payload: []byte("x")}},
+	}
+	var buf bytes.Buffer
+	if err := env.SerializeItems(&buf); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
 func TestUpdateLengthInvalid(t *testing.T) {
 	_, err := UpdateLength(json.RawMessage("not json"), 42)
 	if err == nil {
