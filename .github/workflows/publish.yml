@@ -7,6 +7,11 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Publish version (e.g. v1.2.3)"
+        required: true
 
 permissions:
   contents: write
@@ -36,18 +41,22 @@ jobs:
     needs: [tag]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
       - name: Resolve version
         id: version
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT="${{ github.event.inputs.version }}"
+            echo "value=${INPUT#v}" >> "$GITHUB_OUTPUT"
           else
             echo "value=${{ needs.tag.outputs.version }}" >> "$GITHUB_OUTPUT"
           fi
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: v${{ steps.version.outputs.value }}
 
       - name: Extract release notes
         run: |
