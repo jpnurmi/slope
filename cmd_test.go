@@ -85,9 +85,27 @@ func TestCmdHeaderMissingFile(t *testing.T) {
 	}
 }
 
+func TestCmdHeaderNegativeIndex(t *testing.T) {
+	if err := cmdHeader([]string{testEnvelope, "-1"}); err == nil {
+		t.Fatal("expected error for negative index")
+	}
+}
+
+func TestCmdHeaderInvalidIndex(t *testing.T) {
+	if err := cmdHeader([]string{testEnvelope, "abc"}); err == nil {
+		t.Fatal("expected error for non-numeric index")
+	}
+}
+
 func TestCmdHeaderNoArgs(t *testing.T) {
 	if err := cmdHeader(nil); err == nil {
 		t.Fatal("expected error for no args")
+	}
+}
+
+func TestCmdHeaderTooManyArgs(t *testing.T) {
+	if err := cmdHeader([]string{testEnvelope, "0", "extra"}); err == nil {
+		t.Fatal("expected error for too many args")
 	}
 }
 
@@ -126,6 +144,38 @@ func TestCmdPayloadSummary(t *testing.T) {
 	}
 	if !strings.Contains(lines[3], "<binary") {
 		t.Errorf("expected binary marker in line 4, got %q", lines[3])
+	}
+}
+
+func TestCmdPayloadEnvelope(t *testing.T) {
+	env, err := parseEnvelopeFile(testEnvelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := env.SerializeItems(&buf); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), `"type":"event"`) {
+		t.Error("expected item headers in serialized items")
+	}
+}
+
+func TestCmdPayloadNegativeIndex(t *testing.T) {
+	if err := cmdPayload([]string{testEnvelope, "-1"}); err == nil {
+		t.Fatal("expected error for negative index")
+	}
+}
+
+func TestCmdPayloadMissingFile(t *testing.T) {
+	if err := cmdPayload([]string{"nonexistent", "0"}); err == nil {
+		t.Fatal("expected error for nonexistent file")
+	}
+}
+
+func TestCmdPayloadTooManyArgs(t *testing.T) {
+	if err := cmdPayload([]string{testEnvelope, "0", "extra"}); err == nil {
+		t.Fatal("expected error for too many args")
 	}
 }
 
