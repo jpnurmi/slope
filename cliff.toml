@@ -8,9 +8,9 @@ body = """
 {%- endmacro -%}
 
 {% if version -%}
-## [{{ version | trim_start_matches(pat="v") }}]
+## {{ version | trim_start_matches(pat="v") }}
 {% else -%}
-## [Unreleased]
+## Unreleased
 {% endif -%}
 
 {% for group, commits in commits | group_by(attribute="group") %}
