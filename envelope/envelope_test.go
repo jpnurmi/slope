@@ -348,6 +348,40 @@ func TestOneLineJSONInvalid(t *testing.T) {
 	}
 }
 
+func TestSerializeItems(t *testing.T) {
+	input := `{"event_id":"abc123"}` + "\n" +
+		`{"type":"event","length":27}` + "\n" +
+		`{"message":"hello world!!"}` + "\n"
+
+	env, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := env.SerializeItems(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(buf.String(), `"type":"event"`) {
+		t.Error("expected item header in output")
+	}
+	if !strings.Contains(buf.String(), `hello world`) {
+		t.Error("expected item payload in output")
+	}
+}
+
+func TestSerializeItemsError(t *testing.T) {
+	env := Envelope{
+		Header: json.RawMessage(`{}`),
+		Items:  []Item{{Header: json.RawMessage("not json"), Payload: []byte("x")}},
+	}
+	var buf bytes.Buffer
+	if err := env.SerializeItems(&buf); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
 func TestUpdateLengthInvalid(t *testing.T) {
 	_, err := UpdateLength(json.RawMessage("not json"), 42)
 	if err == nil {
