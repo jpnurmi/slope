@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -67,9 +66,6 @@ func TestIntegrationPager(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
 
 	tests := []struct {
 		name    string
@@ -83,7 +79,7 @@ func TestIntegrationPager(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PAGER", "true")
+			t.Setenv("PAGER", testPagerOK)
 			h := &testHarness{Model: integrationModel(tt.payload)}
 			p := newTestProgram(h)
 
@@ -106,11 +102,8 @@ func TestIntegrationPagerError(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
 
-	t.Setenv("PAGER", "false")
+	t.Setenv("PAGER", testPagerFail)
 	h := &testHarness{Model: integrationModel([]byte(`{"key":"value"}`))}
 	p := newTestProgram(h)
 
@@ -136,21 +129,11 @@ func TestIntegrationEditor(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
 
-	script, err := os.CreateTemp("", "slope-editor-*.sh")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(script.Name())
+	scriptPath := createTestEditorScript(t, `{"edited":true}`)
+	defer os.Remove(scriptPath)
 
-	script.WriteString("#!/bin/sh\nprintf '{\"edited\":true}' > \"$1\"\n")
-	script.Close()
-	os.Chmod(script.Name(), 0o755)
-
-	t.Setenv("EDITOR", script.Name())
+	t.Setenv("EDITOR", scriptPath)
 	h := &testHarness{Model: integrationModel([]byte(`{"original":true}`))}
 	p := newTestProgram(h)
 
@@ -179,11 +162,8 @@ func TestIntegrationEditorNoChange(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
 
-	t.Setenv("EDITOR", "true")
+	t.Setenv("EDITOR", testEditorNoop)
 	original := []byte(`{"original":true}`)
 	h := &testHarness{Model: integrationModel(original)}
 	p := newTestProgram(h)
@@ -213,11 +193,8 @@ func TestIntegrationEditorError(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
 
-	t.Setenv("EDITOR", "false")
+	t.Setenv("EDITOR", testEditorFail)
 	h := &testHarness{Model: integrationModel([]byte(`{"key":"value"}`))}
 	p := newTestProgram(h)
 

@@ -328,9 +328,91 @@ func TestListEditBinary(t *testing.T) {
 
 func TestListEnterViewsItem(t *testing.T) {
 	m := testModel(1)
+	if defaultPager == "" {
+		// built-in pager (Windows)
+		m = update(m, specialKey(tea.KeyEnter))
+		if m.mode != modePager {
+			t.Errorf("enter with items: mode = %d, want modePager", m.mode)
+		}
+	} else {
+		// external pager (Unix)
+		_, cmd := m.Update(specialKey(tea.KeyEnter))
+		if cmd == nil {
+			t.Error("enter with items should return a cmd")
+		}
+	}
+}
+
+func TestListEnterExternalPager(t *testing.T) {
+	t.Setenv("PAGER", testPagerOK)
+	m := testModel(1)
 	_, cmd := m.Update(specialKey(tea.KeyEnter))
 	if cmd == nil {
-		t.Error("enter with items should return a cmd")
+		t.Error("enter with PAGER set should return a cmd")
+	}
+}
+
+func TestBuiltinPagerQuit(t *testing.T) {
+	t.Setenv("PAGER", "")
+	m := testModel(1)
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+	m.pager.SetContent(m.pagerContent())
+	m.pager.GotoTop()
+	m.mode = modePager
+
+	m = update(m, key('q'))
+	if m.mode != modeList {
+		t.Errorf("q in pager: mode = %d, want modeList", m.mode)
+	}
+}
+
+func TestBuiltinPagerScroll(t *testing.T) {
+	m := testModel(1)
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(5)
+	m.pager.SetContent("line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\n")
+	m.pager.GotoTop()
+	m.mode = modePager
+
+	// scroll down
+	m = update(m, key('j'))
+	if m.mode != modePager {
+		t.Errorf("j in pager: mode = %d, want modePager", m.mode)
+	}
+
+	// window resize in pager
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = next.(Model)
+	if m.mode != modePager {
+		t.Errorf("resize in pager: mode = %d, want modePager", m.mode)
+	}
+}
+
+func TestBuiltinPagerView(t *testing.T) {
+	m := testModel(1)
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+	m.pager.SetContent("test content")
+	m.mode = modePager
+
+	v := viewText(m)
+	if !strings.Contains(v, "test content") {
+		t.Error("pager view should contain content")
+	}
+	if !strings.Contains(v, "q/esc close") {
+		t.Error("pager view should contain help text")
+	}
+}
+
+func TestBuiltinPagerEsc(t *testing.T) {
+	t.Setenv("PAGER", "")
+	m := testModel(1)
+	m.mode = modePager
+
+	m = update(m, specialKey(tea.KeyEscape))
+	if m.mode != modeList {
+		t.Errorf("esc in pager: mode = %d, want modeList", m.mode)
 	}
 }
 

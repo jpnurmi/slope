@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"mime"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"charm.land/bubbles/v2/filepicker"
 	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	lipgloss "charm.land/lipgloss/v2"
 	"github.com/getsentry/slope/envelope"
@@ -29,6 +29,7 @@ type viewMode int
 
 const (
 	modeList viewMode = iota
+	modePager
 	modeInput
 	modeExport
 	modeConfirmQuit
@@ -40,11 +41,13 @@ type Model struct {
 	fileSize int64
 	selected int
 	mode     viewMode
+	pager    viewport.Model
 	picker   filepicker.Model
 	export   textinput.Model
 	dirty    bool
 	message  string
 	width    int
+	height   int
 }
 
 func NewModel(env *envelope.Envelope, filePath string, fileSize int64) Model {
@@ -100,6 +103,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+		m.height = msg.Height
+		m.pager.SetWidth(msg.Width)
+		m.pager.SetHeight(max(msg.Height-3, 1))
 		m.picker.SetHeight(max(msg.Height-5, 1))
 	case editResultMsg:
 		if msg.err != nil {
@@ -125,6 +131,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.mode {
 		case modeList:
 			return m.updateList(msg)
+		case modePager:
+			return m.updatePager(msg)
 		case modeInput:
 			if msg.String() == keyEsc {
 				m.mode = modeList
@@ -143,8 +151,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.mode == modeInput {
+	switch m.mode {
+	case modeInput:
 		return m.updatePicker(msg)
+	case modePager:
+		var cmd tea.Cmd
+		m.pager, cmd = m.pager.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -161,7 +174,16 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case keyEnter:
 		if m.itemCount() > 0 {
-			return m, m.viewInPager()
+			cmd := m.viewInPager()
+			if cmd != nil {
+				return m, cmd
+			}
+			m.pager.SetWidth(m.width)
+			m.pager.SetHeight(max(m.height-3, 1))
+			m.pager.SetContent(m.pagerContent())
+			m.pager.GotoTop()
+			m.mode = modePager
+			return m, nil
 		}
 	case keyE:
 		if m.itemCount() > 0 && !envelope.IsBinary(m.envelope.Items[m.selected].Payload) {
@@ -210,25 +232,29 @@ func (m Model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) viewInPager() tea.Cmd {
+func (m Model) pagerContent() string {
 	item := m.envelope.Items[m.selected]
-	var content string
-
 	if len(item.Payload) == 0 {
-		content = "(empty payload)\n"
+		return "(empty payload)\n"
 	} else if envelope.IsBinary(item.Payload) {
-		content = hex.Dump(item.Payload)
+		return hex.Dump(item.Payload)
 	} else if json.Valid(item.Payload) {
-		content = highlightJSON(envelope.PrettyJSON(json.RawMessage(item.Payload))) + "\n"
-	} else {
-		content = string(item.Payload) + "\n"
+		return highlightJSON(envelope.PrettyJSON(json.RawMessage(item.Payload))) + "\n"
 	}
+	return string(item.Payload) + "\n"
+}
+
+func (m Model) viewInPager() tea.Cmd {
+	content := m.pagerContent()
 
 	pager := os.Getenv("PAGER")
 	if pager == "" {
-		pager = "less -R"
+		pager = defaultPager
 	}
-	c := exec.Command("sh", "-c", pager, "--")
+	if pager == "" {
+		return nil // use built-in pager
+	}
+	c := pagerCommand(pager)
 	c.Stdin = strings.NewReader(content)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
@@ -236,6 +262,17 @@ func (m Model) viewInPager() tea.Cmd {
 		}
 		return nil
 	})
+}
+
+func (m Model) updatePager(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case keyQ, keyEsc:
+		m.mode = modeList
+		return m, m.printDump()
+	}
+	var cmd tea.Cmd
+	m.pager, cmd = m.pager.Update(msg)
+	return m, cmd
 }
 
 func (m Model) editInEditor() tea.Cmd {
@@ -273,10 +310,10 @@ func (m Model) editInEditor() tea.Cmd {
 		editor = os.Getenv("VISUAL")
 	}
 	if editor == "" {
-		editor = "nano"
+		editor = defaultEditor
 	}
 
-	c := exec.Command("sh", "-c", editor+" \"$1\"", "--", tmpPath)
+	c := editorCommand(editor, tmpPath)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		defer os.Remove(tmpPath)
 		if err != nil {
@@ -371,6 +408,8 @@ func (m Model) View() tea.View {
 				}
 			}
 		}
+	case modePager:
+		b.WriteString(m.pager.View() + "\n")
 	case modeInput:
 		b.WriteString(labelStyle.Render("Select file to attach") + "\n\n")
 		b.WriteString(m.picker.View() + "\n")
@@ -398,6 +437,8 @@ func (m Model) separator() string {
 
 func (m Model) helpText() string {
 	switch m.mode {
+	case modePager:
+		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q/esc close")
 	case modeInput:
 		return helpStyle.Render("↑/↓ navigate · enter select · esc cancel")
 	case modeExport:
