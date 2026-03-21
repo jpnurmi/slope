@@ -10,8 +10,8 @@ PRE_PIDS=$(pgrep -x ghostty 2>/dev/null || true)
 # Open a clean Ghostty window running the wrapper
 open -na Ghostty --args \
   --window-save-state=never \
-  --window-width=124 \
-  --window-height=42 \
+  --window-width=128 \
+  --window-height=50 \
   --command="$SCRIPTS_DIR/run.sh"
 
 sleep 3
