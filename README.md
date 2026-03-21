@@ -31,11 +31,13 @@ go build -o slope .
 
 ## Usage
 
+### TUI
+
 ```
 slope <file.envelope>
 ```
 
-### Key bindings
+#### Key bindings
 
 | Key | Action |
 |-----|--------|
@@ -47,3 +49,43 @@ slope <file.envelope>
 | `d` | Delete selected item |
 | `w` | Save to file |
 | `q` | Quit |
+
+### CLI
+
+```
+slope header <file> [0-N]
+slope payload <file> [0-N]
+```
+
+Index 0 refers to the envelope header/payload, and 1-N to individual items.
+Without an index, both commands list a summary of all entries.
+
+List all headers:
+```
+$ slope header file.envelope
+0: {"dsn":"...","event_id":"..."}
+1: {"type":"event","length":888}
+2: {"type":"session","length":249}
+3: {"type":"attachment","length":42412,"filename":"minidump.dmp"}
+```
+
+List all payloads:
+```
+$ slope payload file.envelope
+0: <4 items, 79095 bytes>
+1: {"event_id":"...","timestamp":"...","platform":"native","level":"fatal",...}
+2: {"init":true,"sid":"...","status":"crashed",...}
+3: <binary 42412 bytes>
+4: <binary 35546 bytes>
+```
+
+Show a specific item header:
+```
+$ slope header file.envelope 3
+{"type":"attachment","length":42412,"filename":"minidump.dmp"}
+```
+
+Extract a payload to a file:
+```
+$ slope payload file.envelope 3 > minidump.dmp
+```

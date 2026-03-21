@@ -10,35 +10,47 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
+	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "usage: slope <file.envelope>\n")
+		fmt.Fprintf(os.Stderr, "       slope header <file> [0-N]\n")
+		fmt.Fprintf(os.Stderr, "       slope payload <file> [0-N]\n")
 		os.Exit(1)
 	}
 
-	path := os.Args[1]
-	f, err := os.Open(path)
+	var err error
+	switch os.Args[1] {
+	case "header":
+		err = cmdHeader(os.Args[2:])
+	case "payload":
+		err = cmdPayload(os.Args[2:])
+	default:
+		err = runTUI(os.Args[1])
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func runTUI(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
 	}
 	defer f.Close()
 
 	fi, err := f.Stat()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	env, err := envelope.Parse(f)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	m := tui.NewModel(env, path, fi.Size())
 	p := tea.NewProgram(m)
-	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
+	_, err = p.Run()
+	return err
 }

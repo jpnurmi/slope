@@ -121,9 +121,22 @@ func (env *Envelope) Serialize(w io.Writer) error {
 	bw.Write(compact)
 	bw.WriteByte('\n')
 
-	// Write items
+	if err := env.serializeItems(bw); err != nil {
+		return err
+	}
+	return bw.Flush()
+}
+
+func (env *Envelope) SerializeItems(w io.Writer) error {
+	bw := bufio.NewWriter(w)
+	if err := env.serializeItems(bw); err != nil {
+		return err
+	}
+	return bw.Flush()
+}
+
+func (env *Envelope) serializeItems(bw *bufio.Writer) error {
 	for _, item := range env.Items {
-		// Update length in header
 		header, err := UpdateLength(item.Header, len(item.Payload))
 		if err != nil {
 			return fmt.Errorf("updating item header: %w", err)
@@ -137,8 +150,7 @@ func (env *Envelope) Serialize(w io.Writer) error {
 		bw.Write(item.Payload)
 		bw.WriteByte('\n')
 	}
-
-	return bw.Flush()
+	return nil
 }
 
 func IsBinary(data []byte) bool {
