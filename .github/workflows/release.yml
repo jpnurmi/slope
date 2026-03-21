@@ -40,12 +40,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           BRANCH="release/${VERSION}"
-          git checkout -b "$BRANCH"
+          if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}$"; then
+            echo "::error::v${VERSION} has already been released"
+            exit 1
+          fi
+          git checkout -B "$BRANCH"
           git add CHANGELOG.md
           git commit -m "release: v${VERSION}"
-          git push origin "$BRANCH"
-          gh pr create \
-            --title "release: v${VERSION}" \
-            --body "Update CHANGELOG.md for v${VERSION}." \
-            --base main \
-            --head "$BRANCH"
+          git push --force origin "$BRANCH"
+          if ! gh pr view "$BRANCH" &>/dev/null; then
+            gh pr create \
+              --title "release: v${VERSION}" \
+              --body "Update CHANGELOG.md for v${VERSION}." \
+              --base main \
+              --head "$BRANCH"
+          fi
