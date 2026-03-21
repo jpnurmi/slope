@@ -25,7 +25,7 @@ jobs:
           VERSION="${BRANCH#release/}"
           git tag "v${VERSION}"
           git push origin "v${VERSION}"
-          git push origin --delete "$BRANCH"
+          git push origin --delete "$BRANCH" || true
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Extract release notes
