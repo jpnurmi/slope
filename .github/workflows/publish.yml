@@ -4,21 +4,21 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  tag:
     if: github.event.pull_request.merged && startsWith(github.event.pull_request.head.ref, 'release/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Tag release
-        id: tag
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
@@ -26,11 +26,18 @@ jobs:
           git tag "v${VERSION}"
           git push origin "v${VERSION}"
           git push origin --delete "$BRANCH" || true
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Extract release notes
         run: |
-          VERSION="${{ steps.tag.outputs.version }}"
+          VERSION="${GITHUB_REF_NAME#v}"
           awk "/^## ${VERSION}/{found=1; next} /^## /{found=0} found" CHANGELOG.md > release-notes.md
 
       - uses: actions/setup-go@v6
