@@ -26,7 +26,7 @@ jobs:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           VERSION="${BRANCH#release/}"
-          git tag "v${VERSION}"
+          git tag -m "v${VERSION}" "v${VERSION}"
           git push origin "v${VERSION}"
           git push origin --delete "$BRANCH" || true
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
