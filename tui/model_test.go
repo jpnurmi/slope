@@ -2,8 +2,10 @@ package tui
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"os"
 	"path/filepath"
 	"strings"
@@ -713,5 +715,78 @@ func TestEditResultUpdateLengthError(t *testing.T) {
 	m = update(m, editResultMsg{index: 0, payload: []byte("new")})
 	if !strings.Contains(m.message, "Error") {
 		t.Errorf("expected error message, got %q", m.message)
+	}
+}
+
+func TestPagerContentImage(t *testing.T) {
+	data := testPNG(4, 4, color.RGBA{255, 0, 0, 255})
+	m := testModel(0)
+	m.width = 80
+	m.pager.SetHeight(24)
+	m.envelope.Items = []envelope.Item{{
+		Header:  json.RawMessage(`{"type":"attachment","content_type":"image/png"}`),
+		Payload: data,
+		Type:    "attachment",
+	}}
+	got := m.pagerContent()
+	if !strings.Contains(got, "▀") {
+		t.Error("pagerContent for image should contain half-block characters")
+	}
+}
+
+func TestPagerContentImageError(t *testing.T) {
+	m := testModel(0)
+	m.width = 80
+	m.pager.SetHeight(24)
+	m.envelope.Items = []envelope.Item{{
+		Header:  json.RawMessage(`{"type":"attachment","content_type":"image/png"}`),
+		Payload: []byte("not a valid image"),
+		Type:    "attachment",
+	}}
+	got := m.pagerContent()
+	want := hex.Dump([]byte("not a valid image"))
+	if got != want {
+		t.Errorf("pagerContent for invalid image should return hex dump, got %q", got)
+	}
+}
+
+func TestUpdatePicker(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "pic.png")
+	if err := os.WriteFile(path, []byte("fake"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	m := testModel(0)
+	m.mode = modeInput
+	m.picker.Path = path
+
+	next, _ := m.Update(tea.KeyPressMsg{Code: 'z'})
+	m = next.(Model)
+
+	if len(m.envelope.Items) != 1 {
+		t.Fatalf("items = %d, want 1", len(m.envelope.Items))
+	}
+	if !m.dirty {
+		t.Error("dirty = false, want true")
+	}
+	if m.mode != modeList {
+		t.Errorf("mode = %d, want modeList", m.mode)
+	}
+}
+
+func TestUpdatePickerError(t *testing.T) {
+	m := testModel(0)
+	m.mode = modeInput
+	m.picker.Path = "/nonexistent/file.txt"
+
+	next, _ := m.Update(tea.KeyPressMsg{Code: 'z'})
+	m = next.(Model)
+
+	if !strings.Contains(m.message, "Error") {
+		t.Errorf("expected error message, got %q", m.message)
+	}
+	if m.mode != modeList {
+		t.Errorf("mode = %d, want modeList", m.mode)
 	}
 }

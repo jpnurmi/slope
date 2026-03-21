@@ -388,3 +388,65 @@ func TestUpdateLengthInvalid(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 }
+
+func TestContentType(t *testing.T) {
+	tests := []struct {
+		name   string
+		item   Item
+		want   string
+	}{
+		{
+			"from header",
+			Item{Header: json.RawMessage(`{"content_type":"image/png"}`), Payload: []byte("text")},
+			"image/png",
+		},
+		{
+			"detect png",
+			Item{
+				Header:  json.RawMessage(`{}`),
+				Payload: []byte("\x89PNG\r\n\x1a\n" + strings.Repeat("\x00", 100)),
+			},
+			"image/png",
+		},
+		{
+			"detect text",
+			Item{Header: json.RawMessage(`{}`), Payload: []byte("hello world")},
+			"text/plain; charset=utf-8",
+		},
+		{
+			"empty payload",
+			Item{Header: json.RawMessage(`{}`), Payload: nil},
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ContentType(tt.item)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsImage(t *testing.T) {
+	png := Item{Header: json.RawMessage(`{"content_type":"image/png"}`), Payload: []byte("data")}
+	if !IsImage(png) {
+		t.Error("expected image/png to be an image")
+	}
+
+	jpeg := Item{Header: json.RawMessage(`{"content_type":"image/jpeg"}`), Payload: []byte("data")}
+	if !IsImage(jpeg) {
+		t.Error("expected image/jpeg to be an image")
+	}
+
+	text := Item{Header: json.RawMessage(`{"content_type":"text/plain"}`), Payload: []byte("data")}
+	if IsImage(text) {
+		t.Error("expected text/plain to not be an image")
+	}
+
+	noHeader := Item{Header: json.RawMessage(`{}`), Payload: []byte("hello")}
+	if IsImage(noHeader) {
+		t.Error("expected plain text payload to not be an image")
+	}
+}

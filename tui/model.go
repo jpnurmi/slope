@@ -236,6 +236,11 @@ func (m Model) pagerContent() string {
 	item := m.envelope.Items[m.selected]
 	if len(item.Payload) == 0 {
 		return "(empty payload)\n"
+	} else if envelope.IsImage(item) {
+		if s, err := renderImage(item.Payload, m.width, m.pager.Height()); err == nil {
+			return s
+		}
+		return hex.Dump(item.Payload)
 	} else if envelope.IsBinary(item.Payload) {
 		return hex.Dump(item.Payload)
 	} else if json.Valid(item.Payload) {

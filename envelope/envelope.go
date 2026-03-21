@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"unicode/utf8"
 
@@ -163,6 +164,23 @@ func IsBinary(data []byte) bool {
 		}
 	}
 	return false
+}
+
+func ContentType(item Item) string {
+	var hdr struct {
+		ContentType string `json:"content_type"`
+	}
+	if err := json.Unmarshal(item.Header, &hdr); err == nil && hdr.ContentType != "" {
+		return hdr.ContentType
+	}
+	if len(item.Payload) > 0 {
+		return http.DetectContentType(item.Payload)
+	}
+	return ""
+}
+
+func IsImage(item Item) bool {
+	return strings.HasPrefix(ContentType(item), "image/")
 }
 
 func PrettyJSON(data json.RawMessage) string {
