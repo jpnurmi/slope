@@ -30,5 +30,6 @@ commit_parsers = [
   { message = "^feat", group = "Features" },
   { message = "^fix", group = "Fixes" },
   { message = "^(doc|perf|ref)", group = "Improvements" },
+  { message = "^(build|chore)\\(deps\\)", group = "Dependencies" },
   { message = "^(build|ci|chore|test)", skip = true },
 ]
