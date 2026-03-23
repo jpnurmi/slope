@@ -28,6 +28,8 @@ const (
 	streamVmCounters   = 22
 	streamThreadNames  = 24
 
+	streamSentryStackTraces = 0x53790001
+
 	streamBreakpadInfo    = 0x47670001
 	streamAssertionInfo   = 0x47670002
 	streamLinuxCPUInfo    = 0x47670003
@@ -45,6 +47,7 @@ type Minidump struct {
 	Exception       *Exception
 	Threads         []Thread
 	ThreadNames     map[uint32]string
+	Stacktraces     []Stacktrace
 	Modules         []Module
 	UnloadedModules []UnloadedModule
 	Handles         []Handle
@@ -108,6 +111,16 @@ type Thread struct {
 	TEB           uint64
 	StackStart    uint64
 	StackSize     uint32
+}
+
+type Stacktrace struct {
+	ThreadID uint32
+	Frames   []StackFrame
+}
+
+type StackFrame struct {
+	InstructionAddr uint64
+	Symbol          string
 }
 
 type Module struct {
@@ -314,6 +327,7 @@ var StreamTypeNames = map[uint32]string{
 	0x47670009: "LinuxMaps",
 	0x4767000A: "LinuxDsoDebug",
 	0x43500001: "CrashpadInfo",
+	0x53790001: "SentryStackTraces",
 }
 
 var AssertionTypeNames = map[uint32]string{
@@ -395,6 +409,8 @@ func Parse(data []byte) (*Minidump, error) {
 			md.Comment = strings.TrimRight(string(stream), "\x00")
 		case streamCommentW:
 			md.Comment = decodeUTF16(stream)
+		case streamSentryStackTraces:
+			md.Stacktraces = parseStacktraces(stream)
 		case streamBreakpadInfo:
 			md.BreakpadInfo = parseBreakpadInfo(stream)
 		case streamAssertionInfo:
@@ -790,6 +806,93 @@ func parseAssertionInfo(data []byte) *AssertionInfo {
 		Line:       le.Uint32(data[768:]),
 		Type:       le.Uint32(data[772:]),
 	}
+}
+
+func align8(n int) int {
+	if r := n % 8; r != 0 {
+		return n + 8 - r
+	}
+	return n
+}
+
+func parseStacktraces(data []byte) []Stacktrace {
+	if len(data) < 16 {
+		return nil
+	}
+	version := le.Uint32(data[0:])
+	if version != 1 {
+		return nil
+	}
+	numThreads := le.Uint32(data[4:])
+	numFrames := le.Uint32(data[8:])
+	symbolBytes := le.Uint32(data[12:])
+
+	off := align8(16)
+
+	threadSize := int(numThreads) * 12
+	if off+threadSize > len(data) {
+		return nil
+	}
+	type rawThread struct {
+		id, start, count uint32
+	}
+	threads := make([]rawThread, numThreads)
+	for i := range threads {
+		threads[i] = rawThread{
+			id:    le.Uint32(data[off:]),
+			start: le.Uint32(data[off+4:]),
+			count: le.Uint32(data[off+8:]),
+		}
+		off += 12
+	}
+	off = align8(off)
+
+	frameSize := int(numFrames) * 16
+	if off+frameSize > len(data) {
+		return nil
+	}
+	type rawFrame struct {
+		addr      uint64
+		symOff    uint32
+		symLen    uint32
+	}
+	frames := make([]rawFrame, numFrames)
+	for i := range frames {
+		frames[i] = rawFrame{
+			addr:   le.Uint64(data[off:]),
+			symOff: le.Uint32(data[off+8:]),
+			symLen: le.Uint32(data[off+12:]),
+		}
+		off += 16
+	}
+	off = align8(off)
+
+	if off+int(symbolBytes) > len(data) {
+		return nil
+	}
+	symbols := data[off : off+int(symbolBytes)]
+
+	result := make([]Stacktrace, len(threads))
+	for i, t := range threads {
+		st := Stacktrace{ThreadID: t.id}
+		end := t.start + t.count
+		if end > numFrames {
+			end = numFrames
+		}
+		for j := t.start; j < end; j++ {
+			f := frames[j]
+			sym := ""
+			if f.symLen > 0 && int(f.symOff+f.symLen) <= len(symbols) {
+				sym = string(symbols[f.symOff : f.symOff+f.symLen])
+			}
+			st.Frames = append(st.Frames, StackFrame{
+				InstructionAddr: f.addr,
+				Symbol:          sym,
+			})
+		}
+		result[i] = st
+	}
+	return result
 }
 
 func readMinidumpString(data []byte, rva uint32) string {

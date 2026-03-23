@@ -84,6 +84,46 @@ func renderMinidump(data []byte, width int) (string, error) {
 		b.WriteString("\n")
 	}
 
+	if len(md.Stacktraces) > 0 {
+		totalFrames := 0
+		for _, st := range md.Stacktraces {
+			totalFrames += len(st.Frames)
+		}
+		section(fmt.Sprintf("Stacktraces (%d threads, %d frames)", len(md.Stacktraces), totalFrames))
+		for i, st := range md.Stacktraces {
+			if i > 0 {
+				b.WriteString("\n")
+			}
+			threadLabel := fmt.Sprintf("Thread 0x%08X", st.ThreadID)
+			if name, ok := md.ThreadNames[st.ThreadID]; ok {
+				threadLabel += fmt.Sprintf(" %q", name)
+			}
+			if md.Exception != nil && md.Exception.ThreadID == st.ThreadID {
+				threadLabel += " (crashed)"
+			}
+			b.WriteString(threadLabel + "\n")
+			for j, f := range st.Frames {
+				sym := f.Symbol
+				if sym == "" {
+					sym = "<unknown>"
+				}
+				module := ""
+				for _, m := range md.Modules {
+					if f.InstructionAddr >= m.BaseOfImage && f.InstructionAddr < m.BaseOfImage+uint64(m.SizeOfImage) {
+						module = baseName(m.Name)
+						break
+					}
+				}
+				line := fmt.Sprintf("  %s %s", keyStyle.Render(fmt.Sprintf("#%-3d 0x%016X", j, f.InstructionAddr)), sym)
+				if module != "" {
+					line += " " + keyStyle.Render("("+module+")")
+				}
+				b.WriteString(line + "\n")
+			}
+		}
+		b.WriteString("\n")
+	}
+
 	if len(md.Threads) > 0 {
 		section(fmt.Sprintf("Threads (%d)", len(md.Threads)))
 		for _, t := range md.Threads {

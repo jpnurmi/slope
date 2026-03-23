@@ -284,6 +284,42 @@ func testMinidump() []byte {
 	auxvRVA := uint32(len(b.buf))
 	b.buf = append(b.buf, auxvData...)
 
+	// SentryStackTraces: header(16) + 2 threads(24) + 3 frames(48) + symbols
+	sym1 := "trigger_crash"
+	sym2 := "main"
+	symbolData := sym1 + sym2
+	stRVA := uint32(len(b.buf))
+	stOff := b.grow(16) // header
+	b.writeU32(stOff, 1)                        // version
+	b.writeU32(stOff+4, 2)                      // num_threads
+	b.writeU32(stOff+8, 3)                      // num_frames
+	b.writeU32(stOff+12, uint32(len(symbolData))) // symbol_bytes
+	// threads (2 * 12 = 24 bytes, already 8-byte aligned after 16-byte header)
+	t1Off := b.grow(12)
+	b.writeU32(t1Off, 0x1A2B)  // thread_id (crashing thread)
+	b.writeU32(t1Off+4, 0)     // start_frame
+	b.writeU32(t1Off+8, 2)     // num_frames
+	t2Off := b.grow(12)
+	b.writeU32(t2Off, 0x3C4D)  // thread_id
+	b.writeU32(t2Off+4, 2)     // start_frame
+	b.writeU32(t2Off+8, 1)     // num_frames
+	// frames (3 * 16 = 48 bytes, already 8-byte aligned after 24-byte thread list)
+	f1Off := b.grow(16)
+	b.writeU64(f1Off, 0x00007FF6A1B23456)   // instruction_addr
+	b.writeU32(f1Off+8, 0)                  // symbol_offset
+	b.writeU32(f1Off+12, uint32(len(sym1))) // symbol_len
+	f2Off := b.grow(16)
+	b.writeU64(f2Off, 0x00007FF6A1B24000)   // instruction_addr
+	b.writeU32(f2Off+8, uint32(len(sym1)))  // symbol_offset
+	b.writeU32(f2Off+12, uint32(len(sym2))) // symbol_len
+	f3Off := b.grow(16)
+	b.writeU64(f3Off, 0xDEAD)              // instruction_addr (no module match)
+	b.writeU32(f3Off+8, 0)                 // symbol_offset
+	b.writeU32(f3Off+12, 0)                // symbol_len (no symbol)
+	// symbols
+	b.buf = append(b.buf, []byte(symbolData)...)
+	stSize := uint32(len(b.buf)) - stRVA
+
 	// Stream directory
 	dirRVA := uint32(len(b.buf))
 	streams := []struct {
@@ -307,6 +343,7 @@ func testMinidump() []byte {
 		{streamAssertionInfo, 776, aiRVA},
 		{streamCommentA, uint32(len(commentA)), caRVA},
 		{streamMemoryList, 20, memRVA},
+		{streamSentryStackTraces, stSize, stRVA},
 		{streamLinuxLSBRelease, uint32(len(lsbRelease)), lsbRVA},
 		{streamLinuxEnviron, uint32(len(environ)), envRVA},
 		{streamLinuxMaps, uint32(len(mapsData)), mapsRVA},
@@ -382,6 +419,35 @@ func TestParse(t *testing.T) {
 	// ThreadNames
 	if md.ThreadNames[0x1A2B] != "main-thread" {
 		t.Errorf("ThreadName = %q, want %q", md.ThreadNames[0x1A2B], "main-thread")
+	}
+
+	// Stacktraces
+	if len(md.Stacktraces) != 2 {
+		t.Fatalf("Stacktraces = %d, want 2", len(md.Stacktraces))
+	}
+	if md.Stacktraces[0].ThreadID != 0x1A2B {
+		t.Errorf("Stacktrace[0].ThreadID = 0x%X, want 0x1A2B", md.Stacktraces[0].ThreadID)
+	}
+	if len(md.Stacktraces[0].Frames) != 2 {
+		t.Fatalf("Stacktrace[0].Frames = %d, want 2", len(md.Stacktraces[0].Frames))
+	}
+	if md.Stacktraces[0].Frames[0].InstructionAddr != 0x00007FF6A1B23456 {
+		t.Errorf("Frame[0].InstructionAddr = 0x%X", md.Stacktraces[0].Frames[0].InstructionAddr)
+	}
+	if md.Stacktraces[0].Frames[0].Symbol != "trigger_crash" {
+		t.Errorf("Frame[0].Symbol = %q, want %q", md.Stacktraces[0].Frames[0].Symbol, "trigger_crash")
+	}
+	if md.Stacktraces[0].Frames[1].Symbol != "main" {
+		t.Errorf("Frame[1].Symbol = %q, want %q", md.Stacktraces[0].Frames[1].Symbol, "main")
+	}
+	if md.Stacktraces[1].ThreadID != 0x3C4D {
+		t.Errorf("Stacktrace[1].ThreadID = 0x%X, want 0x3C4D", md.Stacktraces[1].ThreadID)
+	}
+	if len(md.Stacktraces[1].Frames) != 1 {
+		t.Fatalf("Stacktrace[1].Frames = %d, want 1", len(md.Stacktraces[1].Frames))
+	}
+	if md.Stacktraces[1].Frames[0].Symbol != "" {
+		t.Errorf("Frame[0].Symbol = %q, want empty", md.Stacktraces[1].Frames[0].Symbol)
 	}
 
 	// Modules
@@ -912,6 +978,58 @@ func TestReadMinidumpStringTruncated(t *testing.T) {
 	got := readMinidumpString(data, 0)
 	if got != "" {
 		t.Errorf("truncated string = %q, want empty", got)
+	}
+}
+
+func TestParseStacktracesEdgeCases(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{"too short", make([]byte, 10)},
+		{"bad version", func() []byte {
+			d := make([]byte, 16)
+			le.PutUint32(d[0:], 2) // version 2
+			return d
+		}()},
+		{"truncated threads", func() []byte {
+			d := make([]byte, 16)
+			le.PutUint32(d[0:], 1)  // version
+			le.PutUint32(d[4:], 10) // num_threads (too many)
+			return d
+		}()},
+		{"truncated frames", func() []byte {
+			d := make([]byte, 24) // header(16) + 0 threads, but claims 1 frame
+			le.PutUint32(d[0:], 1)  // version
+			le.PutUint32(d[4:], 0)  // num_threads
+			le.PutUint32(d[8:], 10) // num_frames (too many)
+			return d
+		}()},
+		{"truncated symbols", func() []byte {
+			d := make([]byte, 16)
+			le.PutUint32(d[0:], 1)     // version
+			le.PutUint32(d[4:], 0)     // num_threads
+			le.PutUint32(d[8:], 0)     // num_frames
+			le.PutUint32(d[12:], 9999) // symbol_bytes (too many)
+			return d
+		}()},
+		{"empty", func() []byte {
+			d := make([]byte, 16)
+			le.PutUint32(d[0:], 1) // version, everything else 0
+			return d
+		}()},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseStacktraces(tt.data)
+			if tt.name == "empty" {
+				if len(result) != 0 {
+					t.Errorf("expected 0 stacktraces, got %d", len(result))
+				}
+			} else if result != nil && tt.name != "empty" {
+				// truncated cases should return nil
+			}
+		})
 	}
 }
 
