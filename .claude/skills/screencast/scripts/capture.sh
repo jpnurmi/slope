@@ -67,7 +67,12 @@ import Quartz
 Quartz.CGWarpMouseCursorPosition((0, 0))
 "
 
+# Capture a single screenshot to extract the window's alpha channel as a mask
+MASK_PNG=$(mktemp /tmp/mask-XXXXXX.png)
+screencapture -l "$WINDOW_ID" -o -x "$MASK_PNG"
+
 # Start recording (25 seconds, silent)
+rm -f "$MOV_FILE"
 screencapture -v -V 30 -l "$WINDOW_ID" -o -x "$MOV_FILE" &
 RECORD_PID=$!
 sleep 1
@@ -162,6 +167,16 @@ ffmpeg -y -i "$MOV_FILE" \
   -filter_complex "[0:v] fps=15,scale=iw/2:ih/2:flags=lanczos,split [a][b]; [a] palettegen=max_colors=128:stats_mode=diff [p]; [b][p] paletteuse=dither=bayer:bayer_scale=3" \
   -loop 0 \
   "$GIF_FILE"
+
+# Round corners using the window's own alpha channel as a mask
+GIF_W=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$GIF_FILE")
+GIF_H=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$GIF_FILE")
+magick "$GIF_FILE" -coalesce \
+  null: \( "$MASK_PNG" -resize "${GIF_W}x${GIF_H}!" -channel A -separate +channel -threshold 50% \) \
+  -compose CopyOpacity -layers composite \
+  -layers optimize \
+  "$GIF_FILE"
+rm -f "$MASK_PNG"
 
 # Kill the new Ghostty process only if it wasn't pre-existing
 if ! echo "$PRE_PIDS" | grep -qw "$OWNER_PID"; then
