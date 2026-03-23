@@ -37,7 +37,9 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
   publish:
-    if: always() && !cancelled() && !failure()
+    if: >-
+      always() && !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.tag.outputs.version != '')
     needs: [tag]
     runs-on: ubuntu-latest
     steps:
