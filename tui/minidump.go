@@ -8,6 +8,7 @@ import (
 
 	lipgloss "charm.land/lipgloss/v2"
 	"github.com/getsentry/slope/minidump"
+	"github.com/ianlancetaylor/demangle"
 )
 
 func renderMinidump(data []byte, width int) (string, error) {
@@ -103,7 +104,7 @@ func renderMinidump(data []byte, width int) (string, error) {
 			}
 			b.WriteString(threadLabel + "\n")
 			for j, f := range st.Frames {
-				sym := f.Symbol
+				sym := demangle.Filter(f.Symbol)
 				if sym == "" {
 					sym = "<unknown>"
 				}
