@@ -450,3 +450,25 @@ func TestIsImage(t *testing.T) {
 		t.Error("expected plain text payload to not be an image")
 	}
 }
+
+func TestIsMinidump(t *testing.T) {
+	mdmp := Item{Header: json.RawMessage(`{}`), Payload: []byte("MDMP\x00\x00\x00\x00")}
+	if !IsMinidump(mdmp) {
+		t.Error("expected MDMP payload to be minidump")
+	}
+
+	text := Item{Header: json.RawMessage(`{}`), Payload: []byte("hello")}
+	if IsMinidump(text) {
+		t.Error("expected text payload to not be minidump")
+	}
+
+	short := Item{Header: json.RawMessage(`{}`), Payload: []byte("MD")}
+	if IsMinidump(short) {
+		t.Error("expected short payload to not be minidump")
+	}
+
+	empty := Item{Header: json.RawMessage(`{}`), Payload: nil}
+	if IsMinidump(empty) {
+		t.Error("expected nil payload to not be minidump")
+	}
+}

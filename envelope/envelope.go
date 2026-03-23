@@ -183,6 +183,10 @@ func IsImage(item Item) bool {
 	return strings.HasPrefix(ContentType(item), "image/")
 }
 
+func IsMinidump(item Item) bool {
+	return len(item.Payload) >= 4 && string(item.Payload[:4]) == "MDMP"
+}
+
 func PrettyJSON(data json.RawMessage) string {
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, data, "", "  "); err != nil {
