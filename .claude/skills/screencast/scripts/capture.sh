@@ -68,7 +68,7 @@ Quartz.CGWarpMouseCursorPosition((0, 0))
 "
 
 # Start recording (25 seconds, silent)
-screencapture -v -V 30 -l "$WINDOW_ID" -x "$MOV_FILE" &
+screencapture -v -V 30 -l "$WINDOW_ID" -o -x "$MOV_FILE" &
 RECORD_PID=$!
 sleep 1
 
