@@ -7,7 +7,7 @@
 
 A TUI viewer and editor for [Sentry envelopes](https://develop.sentry.dev/sdk/foundations/data-model/envelopes/).
 
-![screenshot](screenshot.png)
+![screencast](screencast.gif)
 
 ## Features
 
