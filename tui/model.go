@@ -241,6 +241,11 @@ func (m Model) pagerContent() string {
 			return s
 		}
 		return hex.Dump(item.Payload)
+	} else if envelope.IsMinidump(item) {
+		if s, err := renderMinidump(item.Payload, m.width); err == nil {
+			return s
+		}
+		return hex.Dump(item.Payload)
 	} else if envelope.IsBinary(item.Payload) {
 		return hex.Dump(item.Payload)
 	} else if json.Valid(item.Payload) {
