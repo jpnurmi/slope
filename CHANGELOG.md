@@ -5,14 +5,9 @@
 ### Features
 
 - Render image attachments in the payload viewer (#8)
-- Minidump (#9)
+- Render minidump attachments in the payload viewer (#9)
 - Parse and visualize minidump stacktraces (#11)
 - Demangle C++ symbols in stacktraces (#12)
-
-### Fixes
-
-- Adapt viewText to bubbletea v2 View.Content string type
-- Skip publish job for non-release PR merges
 
 ### Dependencies
 
