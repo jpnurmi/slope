@@ -1,6 +1,6 @@
 [changelog]
 header = """
-# Changelog\n
+# Changelog
 """
 body = """
 {%- macro remote_url() -%}
@@ -18,18 +18,18 @@ body = """
 {% for commit in commits %}
 - {{ commit.message | upper_first | trim }}\
 {% endfor %}
-{% endfor %}
+{% endfor -%}
 """
-trim = true
+trim = false
 
 [git]
 conventional_commits = true
 filter_unconventional = true
 split_commits = false
 commit_parsers = [
-  { message = "^feat", group = "Features" },
-  { message = "^fix", group = "Fixes" },
-  { message = "^(doc|perf|ref)", group = "Improvements" },
-  { message = "^(build|chore)\\(deps\\)", group = "Dependencies" },
+  { message = "^feat", group = "<0>Features" },
+  { message = "^fix", group = "<1>Fixes" },
+  { message = "^(doc|perf|ref)", group = "<2>Improvements" },
+  { message = "^(build|chore)\\(deps\\)", group = "<3>Dependencies" },
   { message = "^(build|ci|chore|test)", skip = true },
 ]
