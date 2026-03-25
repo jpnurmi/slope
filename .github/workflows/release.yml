@@ -26,6 +26,7 @@ jobs:
           INPUT: ${{ github.event.inputs.version }}
 
       - uses: orhun/git-cliff-action@v4
+        id: changelog
         with:
           config: cliff.toml
           args: --tag v${{ steps.version.outputs.value }} --unreleased --prepend CHANGELOG.md
@@ -34,6 +35,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.value }}
+          BODY: ${{ steps.changelog.outputs.content }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -46,10 +48,13 @@ jobs:
           git add CHANGELOG.md
           git commit -m "release: v${VERSION}"
           git push --force origin "$BRANCH"
-          if ! gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number' | grep -q .; then
+          PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$PR" ]; then
+            gh pr edit "$PR" --body "$BODY"
+          else
             gh pr create \
               --title "release: v${VERSION}" \
-              --body "Update CHANGELOG.md for v${VERSION}." \
+              --body "$BODY" \
               --base main \
               --head "$BRANCH"
           fi
