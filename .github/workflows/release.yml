@@ -29,8 +29,6 @@ jobs:
         with:
           config: cliff.toml
           args: --tag v${{ steps.version.outputs.value }} --unreleased --prepend CHANGELOG.md
-        env:
-          OUTPUT: CHANGELOG.md
 
       - name: Create release PR
         env:
