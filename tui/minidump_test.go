@@ -225,6 +225,30 @@ func buildTestMinidump() []byte {
 	lsbRVA := uint32(len(buf))
 	buf = append(buf, []byte(lsb)...)
 
+	// SentryStackTraces: header(16) + 1 thread(12) + 2 frames(32) + symbols
+	mangledSym := "_ZN5MyApp13trigger_crashEv"
+	plainSym := "plain_func"
+	symbolData := mangledSym + plainSym
+	stRVA := uint32(len(buf))
+	st := make([]byte, 16+12+4+32) // header(16) + 1 thread(12) + align(4) + 2 frames(32)
+	le.PutUint32(st[0:], 1)                           // version
+	le.PutUint32(st[4:], 1)                            // num_threads
+	le.PutUint32(st[8:], 2)                            // num_frames
+	le.PutUint32(st[12:], uint32(len(symbolData)))     // symbol_bytes
+	le.PutUint32(st[16:], 0x1A2B)                      // thread_id
+	le.PutUint32(st[20:], 0)                           // start_frame
+	le.PutUint32(st[24:], 2)                           // num_frames
+	// 4 bytes padding at [28:32] for 8-byte alignment
+	le.PutUint64(st[32:], 0x7FF6A1B23456)              // frame 0 addr
+	le.PutUint32(st[40:], 0)                           // symbol_offset
+	le.PutUint32(st[44:], uint32(len(mangledSym)))     // symbol_len
+	le.PutUint64(st[48:], 0x7FF6A1B24000)              // frame 1 addr
+	le.PutUint32(st[56:], uint32(len(mangledSym)))     // symbol_offset
+	le.PutUint32(st[60:], uint32(len(plainSym)))       // symbol_len
+	buf = append(buf, st...)
+	buf = append(buf, []byte(symbolData)...)
+	stSize := uint32(len(buf)) - stRVA
+
 	// Unsupported known stream (ThreadExList = type 8)
 	unsupData := []byte{0x01, 0x02, 0x03, 0x04}
 	unsupRVA := uint32(len(buf))
@@ -257,6 +281,7 @@ func buildTestMinidump() []byte {
 		{0x47670002, 776, aiRVA},
 		{10, uint32(len(comment)), caRVA},
 		{0x47670005, uint32(len(lsb)), lsbRVA},
+		{0x53790001, stSize, stRVA},
 		{8, uint32(len(unsupData)), unsupRVA},
 		{999, uint32(len(unknownData)), unkRVA},
 	}
@@ -292,6 +317,10 @@ func TestRenderMinidump(t *testing.T) {
 		"init",
 		"main.c:99",
 		"INVALID_PARAMETER",
+		"Stacktraces (1 threads, 2 frames)",
+		"MyApp::trigger_crash()",
+		"plain_func",
+		"(crashed)",
 		"Threads (1)",
 		`"worker"`,
 		"Modules (1)",
