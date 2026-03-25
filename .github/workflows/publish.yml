@@ -30,6 +30,8 @@ jobs:
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           VERSION="${BRANCH#release/}"
           git tag -m "v${VERSION}" "v${VERSION}"
           git push origin "v${VERSION}"
