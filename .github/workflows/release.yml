@@ -6,6 +6,9 @@ on:
       version:
         description: "Release version (e.g. v1.2.3)"
         required: true
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 permissions:
   contents: write
@@ -13,6 +16,7 @@ permissions:
 
 jobs:
   prepare:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -58,3 +62,49 @@ jobs:
               --base main \
               --head "$BRANCH"
           fi
+
+  tag:
+    if: github.event.pull_request.merged && startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Tag release
+        id: tag
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          VERSION="${BRANCH#release/}"
+          git tag -m "v${VERSION}" "v${VERSION}"
+          git push origin "v${VERSION}"
+          git push origin --delete "$BRANCH" || true
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: [tag]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: v${{ needs.tag.outputs.version }}
+
+      - name: Extract release notes
+        env:
+          VERSION: ${{ needs.tag.outputs.version }}
+        run: |
+          awk "/^## ${VERSION}/{found=1; next} /^## /{found=0} found" CHANGELOG.md > "${{ runner.temp }}/release-notes.md"
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          args: release --clean --release-notes=${{ runner.temp }}/release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
