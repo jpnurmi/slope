@@ -619,3 +619,21 @@ func TestMinidumpViewerScroll(t *testing.T) {
 		t.Errorf("j in minidump: mode = %d, want modeMinidump", m.mode)
 	}
 }
+
+func TestMinidumpViewerView(t *testing.T) {
+	data := buildTestMinidump()
+	m, err := NewMinidumpViewer(data, "crash.dmp", int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+
+	v := m.View()
+	if !strings.Contains(v.Content, "System Info") {
+		t.Error("minidump view should contain rendered content")
+	}
+	if !strings.Contains(v.Content, "q quit") {
+		t.Error("minidump view should show quit help text")
+	}
+}
