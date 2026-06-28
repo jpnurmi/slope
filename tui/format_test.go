@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/getsentry/slope/envelope"
+	"github.com/jpnurmi/slope/envelope"
 )
 
 func TestItemLabel(t *testing.T) {

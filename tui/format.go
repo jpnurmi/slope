@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/x/term"
-	"github.com/getsentry/slope/envelope"
+	"github.com/jpnurmi/slope/envelope"
 )
 
 func itemLabel(idx int, item envelope.Item) string {

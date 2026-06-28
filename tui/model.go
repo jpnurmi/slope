@@ -15,7 +15,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	lipgloss "charm.land/lipgloss/v2"
-	"github.com/getsentry/slope/envelope"
+	"github.com/jpnurmi/slope/envelope"
 	orderedmap "github.com/wk8/go-ordered-map/v2"
 )
 

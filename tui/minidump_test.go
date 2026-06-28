@@ -9,7 +9,7 @@ import (
 	"unicode/utf16"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/getsentry/slope/envelope"
+	"github.com/jpnurmi/slope/envelope"
 )
 
 // buildTestMinidump constructs a minimal valid minidump binary for TUI tests.

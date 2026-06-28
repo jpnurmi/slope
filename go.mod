@@ -1,4 +1,4 @@
-module github.com/getsentry/slope
+module github.com/jpnurmi/slope
 
 go 1.25.0
 

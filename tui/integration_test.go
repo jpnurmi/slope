@@ -9,7 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/getsentry/slope/envelope"
+	"github.com/jpnurmi/slope/envelope"
 )
 
 // execDoneMsg is a sentinel sent after the exec-triggering key. Since
