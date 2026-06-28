@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -41,6 +42,20 @@ func TestRunPayload(t *testing.T) {
 func TestRunTUIBadFile(t *testing.T) {
 	if err := run([]string{"nonexistent"}); err == nil {
 		t.Fatal("expected error for nonexistent file")
+	}
+}
+
+func TestRunTUIMinidumpInvalid(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "crash.dmp")
+	if err := os.WriteFile(path, []byte("not a minidump but long enough to pass length check"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := run([]string{path})
+	if err == nil {
+		t.Fatal("expected error for invalid minidump")
+	}
+	if !strings.Contains(err.Error(), "minidump") {
+		t.Errorf("expected minidump-related error, got: %v", err)
 	}
 }
 
