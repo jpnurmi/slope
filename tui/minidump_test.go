@@ -8,6 +8,7 @@ import (
 	"testing"
 	"unicode/utf16"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/getsentry/slope/envelope"
 )
 
@@ -557,5 +558,64 @@ func TestPagerContentMinidumpError(t *testing.T) {
 	want := hex.Dump(payload)
 	if got != want {
 		t.Errorf("pagerContent for invalid minidump should return hex dump")
+	}
+}
+
+func TestNewMinidumpViewer(t *testing.T) {
+	data := buildTestMinidump()
+	m, err := NewMinidumpViewer(data, "crash.dmp", int64(len(data)))
+	if err != nil {
+		t.Fatalf("NewMinidumpViewer: %v", err)
+	}
+	if m.mode != modeMinidump {
+		t.Errorf("mode = %d, want modeMinidump (%d)", m.mode, modeMinidump)
+	}
+	if m.filePath != "crash.dmp" {
+		t.Errorf("filePath = %q, want %q", m.filePath, "crash.dmp")
+	}
+	if m.fileSize != int64(len(data)) {
+		t.Errorf("fileSize = %d, want %d", m.fileSize, len(data))
+	}
+}
+
+func TestNewMinidumpViewerInvalidData(t *testing.T) {
+	_, err := NewMinidumpViewer([]byte{0, 1, 2}, "invalid.dmp", 3)
+	if err == nil {
+		t.Fatal("expected error for invalid minidump data")
+	}
+}
+
+func TestMinidumpViewerQuit(t *testing.T) {
+	data := buildTestMinidump()
+	m, err := NewMinidumpViewer(data, "crash.dmp", int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, cmd := m.Update(key('q'))
+	if !isQuitCmd(cmd) {
+		t.Error("q in minidump mode: expected quit cmd")
+	}
+
+	m, _ = NewMinidumpViewer(data, "crash.dmp", int64(len(data)))
+	_, cmd = m.Update(specialKey(tea.KeyEscape))
+	if !isQuitCmd(cmd) {
+		t.Error("esc in minidump mode: expected quit cmd")
+	}
+}
+
+func TestMinidumpViewerScroll(t *testing.T) {
+	data := buildTestMinidump()
+	m, err := NewMinidumpViewer(data, "crash.dmp", int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(5)
+
+	next, _ := m.Update(key('j'))
+	m = next.(Model)
+	if m.mode != modeMinidump {
+		t.Errorf("j in minidump: mode = %d, want modeMinidump", m.mode)
 	}
 }

@@ -33,6 +33,7 @@ const (
 	modeInput
 	modeExport
 	modeConfirmQuit
+	modeMinidump
 )
 
 type Model struct {
@@ -69,12 +70,45 @@ func NewModel(env *envelope.Envelope, filePath string, fileSize int64) Model {
 	}
 }
 
+func NewMinidumpViewer(data []byte, filePath string, fileSize int64) (Model, error) {
+	content, err := renderMinidump(data, 80)
+	if err != nil {
+		return Model{}, err
+	}
+
+	fp := filepicker.New()
+	fp.CurrentDirectory, _ = os.Getwd()
+	fp.FileAllowed = true
+	fp.DirAllowed = false
+	fp.ShowHidden = false
+	fp.ShowSize = true
+	fp.AutoHeight = false
+	fp.SetHeight(20)
+	fp.Styles.Cursor = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
+	fp.Styles.Selected = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
+
+	m := Model{
+		filePath: filePath,
+		fileSize: fileSize,
+		mode:     modeMinidump,
+		picker:   fp,
+	}
+	m.pager.SetContent(content)
+	m.pager.GotoTop()
+	return m, nil
+}
+
 func (m Model) itemCount() int {
 	return len(m.envelope.Items)
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.printDump(), m.picker.Init())
+	var cmds []tea.Cmd
+	if m.mode != modePager && m.mode != modeMinidump {
+		cmds = append(cmds, m.printDump())
+	}
+	cmds = append(cmds, m.picker.Init())
+	return tea.Batch(cmds...)
 }
 
 func (m Model) buildDump() string {
@@ -148,6 +182,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.mode = modeList
 				return m, nil
 			}
+		case modeMinidump:
+			return m.updateMinidump(msg)
 		}
 	}
 
@@ -155,6 +191,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case modeInput:
 		return m.updatePicker(msg)
 	case modePager:
+		var cmd tea.Cmd
+		m.pager, cmd = m.pager.Update(msg)
+		return m, cmd
+	case modeMinidump:
 		var cmd tea.Cmd
 		m.pager, cmd = m.pager.Update(msg)
 		return m, cmd
@@ -279,6 +319,16 @@ func (m Model) updatePager(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case keyQ, keyEsc:
 		m.mode = modeList
 		return m, m.printDump()
+	}
+	var cmd tea.Cmd
+	m.pager, cmd = m.pager.Update(msg)
+	return m, cmd
+}
+
+func (m Model) updateMinidump(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case keyQ, keyEsc:
+		return m, tea.Quit
 	}
 	var cmd tea.Cmd
 	m.pager, cmd = m.pager.Update(msg)
@@ -427,6 +477,8 @@ func (m Model) View() tea.View {
 		b.WriteString(labelStyle.Render("Export to: ") + m.export.View() + "\n")
 	case modeConfirmQuit:
 		b.WriteString(errorStyle.Render("Unsaved changes. Quit anyway?") + "\n")
+	case modeMinidump:
+		b.WriteString(m.pager.View() + "\n")
 	}
 
 	if m.message != "" {
@@ -455,6 +507,8 @@ func (m Model) helpText() string {
 		return helpStyle.Render("enter confirm · esc cancel")
 	case modeConfirmQuit:
 		return helpStyle.Render("y quit · any key cancel")
+	case modeMinidump:
+		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
 	default:
 		dirty := ""
 		if m.dirty {

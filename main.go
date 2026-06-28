@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/getsentry/slope/envelope"
@@ -18,7 +19,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: slope <file.envelope>\n       slope header <file> [0-N]\n       slope payload <file> [0-N]")
+		return fmt.Errorf("usage: slope <file>\n       slope header <file> [0-N]\n       slope payload <file> [0-N]")
 	}
 	switch args[0] {
 	case "header":
@@ -39,6 +40,20 @@ func runTUI(path string) error {
 
 	fi, err := f.Stat()
 	if err != nil {
+		return err
+	}
+
+	if strings.HasSuffix(strings.ToLower(path), ".dmp") {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		m, err := tui.NewMinidumpViewer(data, path, fi.Size())
+		if err != nil {
+			return err
+		}
+		p := tea.NewProgram(m)
+		_, err = p.Run()
 		return err
 	}
 
