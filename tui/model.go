@@ -36,6 +36,7 @@ const (
 	modeMinidump
 	modeJSON
 	modeImage
+	modeTextBinary
 )
 
 type Model struct {
@@ -161,13 +162,48 @@ func NewImageViewer(data []byte, filePath string, fileSize int64) (Model, error)
 	return m, nil
 }
 
+func NewTextBinaryViewer(data []byte, filePath string, fileSize int64, envelopeErr error) Model {
+	var content string
+	if envelopeErr != nil {
+		content = errorStyle.Render("not a valid Sentry envelope: "+envelopeErr.Error()) + "\n\n"
+	}
+	if envelope.IsBinary(data) {
+		content += hex.Dump(data)
+	} else {
+		content += string(data) + "\n"
+	}
+
+	fp := filepicker.New()
+	fp.CurrentDirectory, _ = os.Getwd()
+	fp.FileAllowed = true
+	fp.DirAllowed = false
+	fp.ShowHidden = false
+	fp.ShowSize = true
+	fp.AutoHeight = false
+	fp.SetHeight(20)
+	fp.Styles.Cursor = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
+	fp.Styles.Selected = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
+
+	m := Model{
+		filePath: filePath,
+		fileSize: fileSize,
+		mode:     modeTextBinary,
+		picker:   fp,
+	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+	m.pager.SetContent(content)
+	m.pager.GotoTop()
+	return m
+}
+
 func (m Model) itemCount() int {
 	return len(m.envelope.Items)
 }
 
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	if m.mode != modePager && m.mode != modeMinidump && m.mode != modeJSON && m.mode != modeImage {
+	if m.mode != modePager && m.mode != modeMinidump && m.mode != modeJSON && m.mode != modeImage && m.mode != modeTextBinary {
 		cmds = append(cmds, m.printDump())
 	}
 	cmds = append(cmds, m.picker.Init())
@@ -251,6 +287,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateJSON(msg)
 		case modeImage:
 			return m.updateImage(msg)
+		case modeTextBinary:
+			return m.updateText(msg)
 		}
 	}
 
@@ -270,6 +308,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pager, cmd = m.pager.Update(msg)
 		return m, cmd
 	case modeImage:
+		var cmd tea.Cmd
+		m.pager, cmd = m.pager.Update(msg)
+		return m, cmd
+	case modeTextBinary:
 		var cmd tea.Cmd
 		m.pager, cmd = m.pager.Update(msg)
 		return m, cmd
@@ -430,6 +472,16 @@ func (m Model) updateImage(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m Model) updateText(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case keyQ, keyEsc:
+		return m, tea.Quit
+	}
+	var cmd tea.Cmd
+	m.pager, cmd = m.pager.Update(msg)
+	return m, cmd
+}
+
 func (m Model) editInEditor() tea.Cmd {
 	item := m.envelope.Items[m.selected]
 	index := m.selected
@@ -578,6 +630,8 @@ func (m Model) View() tea.View {
 		b.WriteString(m.pager.View() + "\n")
 	case modeImage:
 		b.WriteString(m.pager.View() + "\n")
+	case modeTextBinary:
+		b.WriteString(m.pager.View() + "\n")
 	}
 
 	if m.message != "" {
@@ -611,6 +665,8 @@ func (m Model) helpText() string {
 	case modeJSON:
 		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
 	case modeImage:
+		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
+	case modeTextBinary:
 		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
 	default:
 		dirty := ""
