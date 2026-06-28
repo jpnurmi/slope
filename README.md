@@ -11,14 +11,13 @@ A TUI viewer and editor for [Sentry envelopes](https://develop.sentry.dev/sdk/fo
 
 ## Features
 
-- Pretty-formatted, syntax-highlighted JSON headers
-- Selectable item list with payload viewing via pager
-- JSON payloads are pretty-printed and highlighted
-- Image attachments rendered inline with ANSI half-block art
+- View, add, edit, delete, export, and save envelope items
+- Selectable envelope items with payload viewers via pager
+- Pretty-formatted and syntax-highlighted JSON headers and items
 - Minidump crash dumps parsed and displayed as structured data
-- Binary payloads are shown as hex dump
-- Add, delete, and export envelope items
-- Save modified envelopes back to file
+- Image attachments rendered inline with ANSI half-block art
+- Binary payloads shown as hex dump
+- Standalone viewer modes for JSON, minidump, image, text, and binary files
 
 ## Install
 
@@ -29,7 +28,7 @@ go install github.com/jpnurmi/slope@latest
 Or build from source:
 
 ```
-go build -o slope .
+go build .
 ```
 
 ## Usage
