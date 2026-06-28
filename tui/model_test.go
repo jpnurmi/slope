@@ -934,6 +934,84 @@ func TestImageViewerScroll(t *testing.T) {
 	}
 }
 
+func TestNewTextBinaryViewer(t *testing.T) {
+	m := NewTextBinaryViewer([]byte("hello world"), "readme.txt", 11, nil)
+	if m.mode != modeTextBinary {
+		t.Errorf("mode = %d, want modeTextBinary (%d)", m.mode, modeTextBinary)
+	}
+	if m.filePath != "readme.txt" {
+		t.Errorf("filePath = %q, want %q", m.filePath, "readme.txt")
+	}
+	if m.fileSize != 11 {
+		t.Errorf("fileSize = %d, want 11", m.fileSize)
+	}
+}
+
+func TestNewTextBinaryViewerBinary(t *testing.T) {
+	data := []byte{0x00, 0x01, 0x02, 0x03}
+	m := NewTextBinaryViewer(data, "data.bin", 4, nil)
+	if m.mode != modeTextBinary {
+		t.Errorf("mode = %d, want modeTextBinary (%d)", m.mode, modeTextBinary)
+	}
+	// binary data should render as hex dump
+	v := m.View()
+	if !strings.Contains(v.Content, "00000000") {
+		t.Error("binary view should contain hex offset")
+	}
+}
+
+func TestTextBinaryViewerQuit(t *testing.T) {
+	m := NewTextBinaryViewer([]byte("hello"), "readme.txt", 5, nil)
+
+	_, cmd := m.Update(key('q'))
+	if !isQuitCmd(cmd) {
+		t.Error("q in text mode: expected quit cmd")
+	}
+
+	m = NewTextBinaryViewer([]byte("hello"), "readme.txt", 5, nil)
+	_, cmd = m.Update(specialKey(tea.KeyEscape))
+	if !isQuitCmd(cmd) {
+		t.Error("esc in text mode: expected quit cmd")
+	}
+}
+
+func TestTextBinaryViewerScroll(t *testing.T) {
+	m := NewTextBinaryViewer([]byte("hello"), "readme.txt", 5, nil)
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(5)
+
+	next, _ := m.Update(key('j'))
+	m = next.(Model)
+	if m.mode != modeTextBinary {
+		t.Errorf("j in text mode: mode = %d, want modeTextBinary", m.mode)
+	}
+}
+
+func TestTextBinaryViewerError(t *testing.T) {
+	m := NewTextBinaryViewer([]byte("hello world"), "readme.txt", 11, fmt.Errorf("invalid JSON in envelope header"))
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+
+	v := m.View()
+	if !strings.Contains(v.Content, "not a valid Sentry envelope") {
+		t.Error("text view with envelope error should contain error notice")
+	}
+}
+
+func TestTextBinaryViewerView(t *testing.T) {
+	m := NewTextBinaryViewer([]byte("hello world"), "readme.txt", 11, nil)
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+
+	v := m.View()
+	if !strings.Contains(v.Content, "hello world") {
+		t.Error("text view should contain content")
+	}
+	if !strings.Contains(v.Content, "q quit") {
+		t.Error("text view should show quit help text")
+	}
+}
+
 func TestImageViewerView(t *testing.T) {
 	data := buildTestImage()
 	m, err := NewImageViewer(data, "image.png", int64(len(data)))

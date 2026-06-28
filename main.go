@@ -89,6 +89,16 @@ func runTUI(path string) error {
 
 	env, err := envelope.Parse(f)
 	if err != nil {
+		if strings.HasSuffix(strings.ToLower(path), ".envelope") {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		m := tui.NewTextBinaryViewer(data, path, fi.Size(), err)
+		p := tea.NewProgram(m)
+		_, err = p.Run()
 		return err
 	}
 
