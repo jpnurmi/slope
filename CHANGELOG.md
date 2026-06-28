@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+### Fixes
+
+- Update module path for "go install" compatibility (#29)
+
 ## 0.3.0
 
 ### Features
