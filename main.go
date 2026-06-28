@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -63,6 +64,21 @@ func runTUI(path string) error {
 			return err
 		}
 		m, err := tui.NewJSONViewer(data, path, fi.Size())
+		if err != nil {
+			return err
+		}
+		p := tea.NewProgram(m)
+		_, err = p.Run()
+		return err
+	}
+
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".png", ".jpg", ".jpeg", ".gif":
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		m, err := tui.NewImageViewer(data, path, fi.Size())
 		if err != nil {
 			return err
 		}

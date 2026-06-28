@@ -35,6 +35,7 @@ const (
 	modeConfirmQuit
 	modeMinidump
 	modeJSON
+	modeImage
 )
 
 type Model struct {
@@ -130,13 +131,43 @@ func NewJSONViewer(data []byte, filePath string, fileSize int64) (Model, error) 
 	return m, nil
 }
 
+func NewImageViewer(data []byte, filePath string, fileSize int64) (Model, error) {
+	content, err := renderImage(data, 80, 24)
+	if err != nil {
+		return Model{}, err
+	}
+
+	fp := filepicker.New()
+	fp.CurrentDirectory, _ = os.Getwd()
+	fp.FileAllowed = true
+	fp.DirAllowed = false
+	fp.ShowHidden = false
+	fp.ShowSize = true
+	fp.AutoHeight = false
+	fp.SetHeight(20)
+	fp.Styles.Cursor = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
+	fp.Styles.Selected = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
+
+	m := Model{
+		filePath: filePath,
+		fileSize: fileSize,
+		mode:     modeImage,
+		picker:   fp,
+	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+	m.pager.SetContent(content)
+	m.pager.GotoTop()
+	return m, nil
+}
+
 func (m Model) itemCount() int {
 	return len(m.envelope.Items)
 }
 
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	if m.mode != modePager && m.mode != modeMinidump && m.mode != modeJSON {
+	if m.mode != modePager && m.mode != modeMinidump && m.mode != modeJSON && m.mode != modeImage {
 		cmds = append(cmds, m.printDump())
 	}
 	cmds = append(cmds, m.picker.Init())
@@ -218,6 +249,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateMinidump(msg)
 		case modeJSON:
 			return m.updateJSON(msg)
+		case modeImage:
+			return m.updateImage(msg)
 		}
 	}
 
@@ -233,6 +266,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pager, cmd = m.pager.Update(msg)
 		return m, cmd
 	case modeJSON:
+		var cmd tea.Cmd
+		m.pager, cmd = m.pager.Update(msg)
+		return m, cmd
+	case modeImage:
 		var cmd tea.Cmd
 		m.pager, cmd = m.pager.Update(msg)
 		return m, cmd
@@ -374,6 +411,16 @@ func (m Model) updateMinidump(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateJSON(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case keyQ, keyEsc:
+		return m, tea.Quit
+	}
+	var cmd tea.Cmd
+	m.pager, cmd = m.pager.Update(msg)
+	return m, cmd
+}
+
+func (m Model) updateImage(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case keyQ, keyEsc:
 		return m, tea.Quit
@@ -529,6 +576,8 @@ func (m Model) View() tea.View {
 		b.WriteString(m.pager.View() + "\n")
 	case modeJSON:
 		b.WriteString(m.pager.View() + "\n")
+	case modeImage:
+		b.WriteString(m.pager.View() + "\n")
 	}
 
 	if m.message != "" {
@@ -560,6 +609,8 @@ func (m Model) helpText() string {
 	case modeMinidump:
 		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
 	case modeJSON:
+		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
+	case modeImage:
 		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
 	default:
 		dirty := ""
