@@ -59,6 +59,20 @@ func TestRunTUIMinidumpInvalid(t *testing.T) {
 	}
 }
 
+func TestRunTUIJSONInvalid(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "data.json")
+	if err := os.WriteFile(path, []byte("not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := run([]string{path})
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+	if !strings.Contains(err.Error(), "JSON") {
+		t.Errorf("expected JSON-related error, got: %v", err)
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout
