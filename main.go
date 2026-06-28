@@ -57,6 +57,20 @@ func runTUI(path string) error {
 		return err
 	}
 
+	if strings.HasSuffix(strings.ToLower(path), ".json") {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		m, err := tui.NewJSONViewer(data, path, fi.Size())
+		if err != nil {
+			return err
+		}
+		p := tea.NewProgram(m)
+		_, err = p.Run()
+		return err
+	}
+
 	env, err := envelope.Parse(f)
 	if err != nil {
 		return err

@@ -34,6 +34,7 @@ const (
 	modeExport
 	modeConfirmQuit
 	modeMinidump
+	modeJSON
 )
 
 type Model struct {
@@ -93,6 +94,37 @@ func NewMinidumpViewer(data []byte, filePath string, fileSize int64) (Model, err
 		mode:     modeMinidump,
 		picker:   fp,
 	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+	m.pager.SetContent(content)
+	m.pager.GotoTop()
+	return m, nil
+}
+
+func NewJSONViewer(data []byte, filePath string, fileSize int64) (Model, error) {
+	if !json.Valid(data) {
+		return Model{}, fmt.Errorf("invalid JSON")
+	}
+
+	content := highlightJSON(envelope.PrettyJSON(json.RawMessage(data))) + "\n"
+
+	fp := filepicker.New()
+	fp.CurrentDirectory, _ = os.Getwd()
+	fp.FileAllowed = true
+	fp.DirAllowed = false
+	fp.ShowHidden = false
+	fp.ShowSize = true
+	fp.AutoHeight = false
+	fp.SetHeight(20)
+	fp.Styles.Cursor = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
+	fp.Styles.Selected = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
+
+	m := Model{
+		filePath: filePath,
+		fileSize: fileSize,
+		mode:     modeJSON,
+		picker:   fp,
+	}
 	m.pager.SetContent(content)
 	m.pager.GotoTop()
 	return m, nil
@@ -104,7 +136,7 @@ func (m Model) itemCount() int {
 
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	if m.mode != modePager && m.mode != modeMinidump {
+	if m.mode != modePager && m.mode != modeMinidump && m.mode != modeJSON {
 		cmds = append(cmds, m.printDump())
 	}
 	cmds = append(cmds, m.picker.Init())
@@ -184,6 +216,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case modeMinidump:
 			return m.updateMinidump(msg)
+		case modeJSON:
+			return m.updateJSON(msg)
 		}
 	}
 
@@ -195,6 +229,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pager, cmd = m.pager.Update(msg)
 		return m, cmd
 	case modeMinidump:
+		var cmd tea.Cmd
+		m.pager, cmd = m.pager.Update(msg)
+		return m, cmd
+	case modeJSON:
 		var cmd tea.Cmd
 		m.pager, cmd = m.pager.Update(msg)
 		return m, cmd
@@ -326,6 +364,16 @@ func (m Model) updatePager(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateMinidump(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case keyQ, keyEsc:
+		return m, tea.Quit
+	}
+	var cmd tea.Cmd
+	m.pager, cmd = m.pager.Update(msg)
+	return m, cmd
+}
+
+func (m Model) updateJSON(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case keyQ, keyEsc:
 		return m, tea.Quit
@@ -479,6 +527,8 @@ func (m Model) View() tea.View {
 		b.WriteString(errorStyle.Render("Unsaved changes. Quit anyway?") + "\n")
 	case modeMinidump:
 		b.WriteString(m.pager.View() + "\n")
+	case modeJSON:
+		b.WriteString(m.pager.View() + "\n")
 	}
 
 	if m.message != "" {
@@ -508,6 +558,8 @@ func (m Model) helpText() string {
 	case modeConfirmQuit:
 		return helpStyle.Render("y quit · any key cancel")
 	case modeMinidump:
+		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
+	case modeJSON:
 		return helpStyle.Render("↑/↓/j/k scroll · d/u half-page · f/b page · q quit")
 	default:
 		dirty := ""

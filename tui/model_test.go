@@ -790,3 +790,73 @@ func TestUpdatePickerError(t *testing.T) {
 		t.Errorf("mode = %d, want modeList", m.mode)
 	}
 }
+
+func TestNewJSONViewer(t *testing.T) {
+	m, err := NewJSONViewer([]byte(`{"key":"value"}`), "data.json", 15)
+	if err != nil {
+		t.Fatalf("NewJSONViewer: %v", err)
+	}
+	if m.mode != modeJSON {
+		t.Errorf("mode = %d, want modeJSON (%d)", m.mode, modeJSON)
+	}
+	if m.filePath != "data.json" {
+		t.Errorf("filePath = %q, want %q", m.filePath, "data.json")
+	}
+}
+
+func TestNewJSONViewerInvalid(t *testing.T) {
+	_, err := NewJSONViewer([]byte("not json"), "data.json", 8)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestJSONViewerQuit(t *testing.T) {
+	m, err := NewJSONViewer([]byte(`{}`), "data.json", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, cmd := m.Update(key('q'))
+	if !isQuitCmd(cmd) {
+		t.Error("q in JSON mode: expected quit cmd")
+	}
+
+	m, _ = NewJSONViewer([]byte(`{}`), "data.json", 2)
+	_, cmd = m.Update(specialKey(tea.KeyEscape))
+	if !isQuitCmd(cmd) {
+		t.Error("esc in JSON mode: expected quit cmd")
+	}
+}
+
+func TestJSONViewerScroll(t *testing.T) {
+	m, err := NewJSONViewer([]byte(`{"key":"value"}`), "data.json", 15)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(5)
+
+	next, _ := m.Update(key('j'))
+	m = next.(Model)
+	if m.mode != modeJSON {
+		t.Errorf("j in JSON mode: mode = %d, want modeJSON", m.mode)
+	}
+}
+
+func TestJSONViewerView(t *testing.T) {
+	m, err := NewJSONViewer([]byte(`{"key":"value"}`), "data.json", 15)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+
+	v := m.View()
+	if !strings.Contains(v.Content, "key") {
+		t.Error("JSON view should contain rendered content")
+	}
+	if !strings.Contains(v.Content, "q quit") {
+		t.Error("JSON view should show quit help text")
+	}
+}
