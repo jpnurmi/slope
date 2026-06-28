@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/getsentry/slope/envelope"
+	"github.com/jpnurmi/slope/envelope"
 )
 
 func parseEnvelopeFile(path string) (*envelope.Envelope, error) {

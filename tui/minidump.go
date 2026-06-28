@@ -7,7 +7,7 @@ import (
 	"time"
 
 	lipgloss "charm.land/lipgloss/v2"
-	"github.com/getsentry/slope/minidump"
+	"github.com/jpnurmi/slope/minidump"
 	"github.com/ianlancetaylor/demangle"
 )
 

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/getsentry/slope/envelope"
-	"github.com/getsentry/slope/tui"
+	"github.com/jpnurmi/slope/envelope"
+	"github.com/jpnurmi/slope/tui"
 )
 
 func main() {
