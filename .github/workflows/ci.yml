@@ -34,6 +34,8 @@ jobs:
 
       - run: go test -coverprofile=coverage.out ./...
 
+      - run: go install ./...
+
       - uses: codecov/codecov-action@v7
         with:
           files: coverage.out
