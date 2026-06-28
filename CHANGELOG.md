@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+### Features
+
+- Standalone minidump viewer mode (#23)
+- Standalone JSON viewer mode (#24)
+- Standalone image viewer mode (#25)
+- Standalone text/binary viewer mode (#26)
+
+### Dependencies
+
+- Bump actions/checkout from 6 to 7 (#21)
+- Bump codecov/codecov-action from 5 to 7 (#20)
+- Bump the charm group across 1 directory with 3 updates (#17)
+- Bump github.com/alecthomas/chroma/v2 from 2.23.1 to 2.27.0 (#22)
+
 ## 0.2.0
 
 ### Features
