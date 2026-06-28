@@ -73,6 +73,17 @@ func TestRunTUIJSONInvalid(t *testing.T) {
 	}
 }
 
+func TestRunTUIImageInvalid(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "image.png")
+	if err := os.WriteFile(path, []byte("not an image"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := run([]string{path})
+	if err == nil {
+		t.Fatal("expected error for invalid image")
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout

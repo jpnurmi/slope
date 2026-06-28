@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"image"
 	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -858,5 +860,91 @@ func TestJSONViewerView(t *testing.T) {
 	}
 	if !strings.Contains(v.Content, "q quit") {
 		t.Error("JSON view should show quit help text")
+	}
+}
+
+func buildTestImage() []byte {
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	red := color.RGBA{255, 0, 0, 255}
+	img.Set(0, 0, red)
+	img.Set(1, 0, red)
+	img.Set(0, 1, red)
+	img.Set(1, 1, red)
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
+	return buf.Bytes()
+}
+
+func TestNewImageViewer(t *testing.T) {
+	data := buildTestImage()
+	m, err := NewImageViewer(data, "image.png", int64(len(data)))
+	if err != nil {
+		t.Fatalf("NewImageViewer: %v", err)
+	}
+	if m.mode != modeImage {
+		t.Errorf("mode = %d, want modeImage (%d)", m.mode, modeImage)
+	}
+	if m.filePath != "image.png" {
+		t.Errorf("filePath = %q, want %q", m.filePath, "image.png")
+	}
+	if m.fileSize != int64(len(data)) {
+		t.Errorf("fileSize = %d, want %d", m.fileSize, len(data))
+	}
+}
+
+func TestNewImageViewerInvalid(t *testing.T) {
+	_, err := NewImageViewer([]byte("not an image"), "invalid.png", 14)
+	if err == nil {
+		t.Fatal("expected error for invalid image data")
+	}
+}
+
+func TestImageViewerQuit(t *testing.T) {
+	data := buildTestImage()
+	m, err := NewImageViewer(data, "image.png", int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, cmd := m.Update(key('q'))
+	if !isQuitCmd(cmd) {
+		t.Error("q in image mode: expected quit cmd")
+	}
+
+	m, _ = NewImageViewer(data, "image.png", int64(len(data)))
+	_, cmd = m.Update(specialKey(tea.KeyEscape))
+	if !isQuitCmd(cmd) {
+		t.Error("esc in image mode: expected quit cmd")
+	}
+}
+
+func TestImageViewerScroll(t *testing.T) {
+	data := buildTestImage()
+	m, err := NewImageViewer(data, "image.png", int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(5)
+
+	next, _ := m.Update(key('j'))
+	m = next.(Model)
+	if m.mode != modeImage {
+		t.Errorf("j in image mode: mode = %d, want modeImage", m.mode)
+	}
+}
+
+func TestImageViewerView(t *testing.T) {
+	data := buildTestImage()
+	m, err := NewImageViewer(data, "image.png", int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.pager.SetWidth(80)
+	m.pager.SetHeight(24)
+
+	v := m.View()
+	if !strings.Contains(v.Content, "q quit") {
+		t.Error("image view should show quit help text")
 	}
 }
