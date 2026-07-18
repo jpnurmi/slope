@@ -99,7 +99,7 @@ jobs:
         run: |
           awk "/^## ${VERSION}/{found=1; next} /^## /{found=0} found" CHANGELOG.md > "${{ runner.temp }}/release-notes.md"
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
