@@ -54,6 +54,7 @@ const (
 	ceStreamDiagnosisList       = 0x800C
 	streamLastReserved          = 0xFFFF
 
+	streamCrashpadInfo      = 0x43500001
 	streamSentryStackTraces = 0x53790001
 
 	streamBreakpadInfo    = 0x47670001
@@ -375,7 +376,7 @@ var StreamTypeNames = map[uint32]string{
 	streamLinuxAuxv:             "LinuxAuxv",
 	streamLinuxMaps:             "LinuxMaps",
 	streamLinuxDsoDebug:         "LinuxDsoDebug",
-	0x43500001:                  "CrashpadInfo",
+	streamCrashpadInfo:          "CrashpadInfo",
 	streamSentryStackTraces:     "SentryStackTraces",
 }
 
