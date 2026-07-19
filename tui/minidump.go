@@ -7,8 +7,8 @@ import (
 	"time"
 
 	lipgloss "charm.land/lipgloss/v2"
-	"github.com/jpnurmi/slope/minidump"
 	"github.com/ianlancetaylor/demangle"
+	"github.com/jpnurmi/slope/minidump"
 )
 
 func renderMinidump(data []byte, width int) (string, error) {
@@ -337,6 +337,11 @@ func renderMinidump(data []byte, width int) (string, error) {
 		name := minidump.StreamTypeNames[us.Type]
 		if name == "" {
 			name = fmt.Sprintf("Stream %d", us.Type)
+		}
+		if len(us.Data) == 0 {
+			section(fmt.Sprintf("%s (empty)", name))
+			b.WriteString("\n")
+			continue
 		}
 		section(fmt.Sprintf("%s (unsupported, %s)", name, formatSize(len(us.Data))))
 		for _, line := range strings.Split(strings.TrimRight(hex.Dump(us.Data), "\n"), "\n") {
