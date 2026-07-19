@@ -11,23 +11,50 @@ import (
 const signature = 0x504D444D // "MDMP" in little-endian
 
 const (
-	streamThreadList   = 3
-	streamModuleList   = 4
-	streamMemoryList   = 5
-	streamException    = 6
-	streamSystemInfo   = 7
-	streamMemory64List = 9
-	streamCommentA     = 10
-	streamCommentW     = 11
-	streamHandleData   = 12
-	streamFuncTable    = 13
-	streamUnloadedMods = 14
-	streamMiscInfo     = 15
-	streamMemoryInfo   = 16
-	streamSysMemInfo   = 21
-	streamVmCounters   = 22
-	streamThreadNames  = 24
+	streamUnused              = 0
+	streamReserved0           = 1
+	streamReserved1           = 2
+	streamThreadList          = 3
+	streamModuleList          = 4
+	streamMemoryList          = 5
+	streamException           = 6
+	streamSystemInfo          = 7
+	streamThreadExList        = 8
+	streamMemory64List        = 9
+	streamCommentA            = 10
+	streamCommentW            = 11
+	streamHandleData          = 12
+	streamFuncTable           = 13
+	streamUnloadedMods        = 14
+	streamMiscInfo            = 15
+	streamMemoryInfo          = 16
+	streamThreadInfo          = 17
+	streamHandleOperationList = 18
+	streamToken               = 19
+	streamJavaScriptData      = 20
+	streamSysMemInfo          = 21
+	streamVmCounters          = 22
+	streamIptTrace            = 23
+	streamThreadNames         = 24
+	streamCompressedMemory    = 25
+	streamCompressedMemorySQL = 26
 
+	ceStreamNull                = 0x8000
+	ceStreamSystemInfo          = 0x8001
+	ceStreamException           = 0x8002
+	ceStreamModuleList          = 0x8003
+	ceStreamProcessList         = 0x8004
+	ceStreamThreadList          = 0x8005
+	ceStreamThreadContextList   = 0x8006
+	ceStreamThreadCallStackList = 0x8007
+	ceStreamMemoryVirtualList   = 0x8008
+	ceStreamMemoryPhysicalList  = 0x8009
+	ceStreamBucketParameters    = 0x800A
+	ceStreamProcessModuleMap    = 0x800B
+	ceStreamDiagnosisList       = 0x800C
+	streamLastReserved          = 0xFFFF
+
+	streamCrashpadInfo      = 0x43500001
 	streamSentryStackTraces = 0x53790001
 
 	streamBreakpadInfo    = 0x47670001
@@ -39,10 +66,12 @@ const (
 	streamLinuxEnviron    = 0x47670007
 	streamLinuxAuxv       = 0x47670008
 	streamLinuxMaps       = 0x47670009
+	streamLinuxDsoDebug   = 0x4767000A
 )
 
 type Minidump struct {
 	Header          Header
+	Streams         []Stream
 	SystemInfo      *SystemInfo
 	Exception       *Exception
 	Threads         []Thread
@@ -62,6 +91,11 @@ type Minidump struct {
 	Comment         string
 	LinuxStrings    map[string]string
 	UnknownStreams  []UnknownStream
+}
+
+type Stream struct {
+	Type uint32
+	Size uint32
 }
 
 type UnknownStream struct {
@@ -144,25 +178,25 @@ type UnloadedModule struct {
 }
 
 type Handle struct {
-	Handle       uint64
-	TypeName     string
-	ObjectName   string
-	Attributes   uint32
+	Handle        uint64
+	TypeName      string
+	ObjectName    string
+	Attributes    uint32
 	GrantedAccess uint32
-	HandleCount  uint32
-	PointerCount uint32
+	HandleCount   uint32
+	PointerCount  uint32
 }
 
 type FunctionTable struct {
-	MinAddress uint64
-	MaxAddress uint64
+	MinAddress  uint64
+	MaxAddress  uint64
 	BaseAddress uint64
-	Entries    []FunctionEntry
+	Entries     []FunctionEntry
 }
 
 type FunctionEntry struct {
-	BeginAddress     uint32
-	EndAddress       uint32
+	BeginAddress      uint32
+	EndAddress        uint32
 	UnwindInfoAddress uint32
 }
 
@@ -199,16 +233,16 @@ type SystemMemoryInfo struct {
 }
 
 type ProcessVmCounters struct {
-	PageFaultCount            uint32
-	PeakWorkingSetSize        uint64
-	WorkingSetSize            uint64
-	QuotaPeakPagedPoolUsage   uint64
-	QuotaPagedPoolUsage       uint64
+	PageFaultCount             uint32
+	PeakWorkingSetSize         uint64
+	WorkingSetSize             uint64
+	QuotaPeakPagedPoolUsage    uint64
+	QuotaPagedPoolUsage        uint64
 	QuotaPeakNonPagedPoolUsage uint64
-	QuotaNonPagedPoolUsage    uint64
-	PagefileUsage             uint64
-	PeakPagefileUsage         uint64
-	PrivateUsage              uint64
+	QuotaNonPagedPoolUsage     uint64
+	PagefileUsage              uint64
+	PeakPagefileUsage          uint64
+	PrivateUsage               uint64
 }
 
 type BreakpadInfo struct {
@@ -291,43 +325,59 @@ var MemProtectNames = map[uint32]string{
 }
 
 var StreamTypeNames = map[uint32]string{
-	0:          "Unused",
-	1:          "Reserved",
-	2:          "Reserved",
-	3:          "ThreadList",
-	4:          "ModuleList",
-	5:          "MemoryList",
-	6:          "Exception",
-	7:          "SystemInfo",
-	8:          "ThreadExList",
-	9:          "Memory64List",
-	10:         "CommentA",
-	11:         "CommentW",
-	12:         "HandleData",
-	13:         "FunctionTable",
-	14:         "UnloadedModuleList",
-	15:         "MiscInfo",
-	16:         "MemoryInfoList",
-	17:         "ThreadInfoList",
-	18:         "HandleOperationList",
-	19:         "Token",
-	20:         "JavaScriptData",
-	21:         "SystemMemoryInfo",
-	22:         "ProcessVmCounters",
-	23:         "IptTrace",
-	24:         "ThreadNames",
-	0x47670001: "BreakpadInfo",
-	0x47670002: "AssertionInfo",
-	0x47670003: "LinuxCpuInfo",
-	0x47670004: "LinuxProcStatus",
-	0x47670005: "LinuxLsbRelease",
-	0x47670006: "LinuxCmdLine",
-	0x47670007: "LinuxEnviron",
-	0x47670008: "LinuxAuxv",
-	0x47670009: "LinuxMaps",
-	0x4767000A: "LinuxDsoDebug",
-	0x43500001: "CrashpadInfo",
-	0x53790001: "SentryStackTraces",
+	streamUnused:                "Unused",
+	streamReserved0:             "Reserved0",
+	streamReserved1:             "Reserved1",
+	streamThreadList:            "ThreadList",
+	streamModuleList:            "ModuleList",
+	streamMemoryList:            "MemoryList",
+	streamException:             "Exception",
+	streamSystemInfo:            "SystemInfo",
+	streamThreadExList:          "ThreadExList",
+	streamMemory64List:          "Memory64List",
+	streamCommentA:              "CommentA",
+	streamCommentW:              "CommentW",
+	streamHandleData:            "HandleData",
+	streamFuncTable:             "FunctionTable",
+	streamUnloadedMods:          "UnloadedModuleList",
+	streamMiscInfo:              "MiscInfo",
+	streamMemoryInfo:            "MemoryInfoList",
+	streamThreadInfo:            "ThreadInfoList",
+	streamHandleOperationList:   "HandleOperationList",
+	streamToken:                 "Token",
+	streamJavaScriptData:        "JavaScriptData",
+	streamSysMemInfo:            "SystemMemoryInfo",
+	streamVmCounters:            "ProcessVmCounters",
+	streamIptTrace:              "IptTrace",
+	streamThreadNames:           "ThreadNames",
+	streamCompressedMemory:      "CompressedMemory",
+	streamCompressedMemorySQL:   "CompressedMemorySQL",
+	ceStreamNull:                "ceStreamNull",
+	ceStreamSystemInfo:          "ceStreamSystemInfo",
+	ceStreamException:           "ceStreamException",
+	ceStreamModuleList:          "ceStreamModuleList",
+	ceStreamProcessList:         "ceStreamProcessList",
+	ceStreamThreadList:          "ceStreamThreadList",
+	ceStreamThreadContextList:   "ceStreamThreadContextList",
+	ceStreamThreadCallStackList: "ceStreamThreadCallStackList",
+	ceStreamMemoryVirtualList:   "ceStreamMemoryVirtualList",
+	ceStreamMemoryPhysicalList:  "ceStreamMemoryPhysicalList",
+	ceStreamBucketParameters:    "ceStreamBucketParameters",
+	ceStreamProcessModuleMap:    "ceStreamProcessModuleMap",
+	ceStreamDiagnosisList:       "ceStreamDiagnosisList",
+	streamLastReserved:          "LastReserved",
+	streamBreakpadInfo:          "BreakpadInfo",
+	streamAssertionInfo:         "AssertionInfo",
+	streamLinuxCPUInfo:          "LinuxCpuInfo",
+	streamLinuxProcStatus:       "LinuxProcStatus",
+	streamLinuxLSBRelease:       "LinuxLsbRelease",
+	streamLinuxCmdLine:          "LinuxCmdLine",
+	streamLinuxEnviron:          "LinuxEnviron",
+	streamLinuxAuxv:             "LinuxAuxv",
+	streamLinuxMaps:             "LinuxMaps",
+	streamLinuxDsoDebug:         "LinuxDsoDebug",
+	streamCrashpadInfo:          "CrashpadInfo",
+	streamSentryStackTraces:     "SentryStackTraces",
 }
 
 var AssertionTypeNames = map[uint32]string{
@@ -367,12 +417,19 @@ func Parse(data []byte) (*Minidump, error) {
 		entry.StreamType = le.Uint32(data[off:])
 		entry.DataSize = le.Uint32(data[off+4:])
 		entry.DataRVA = le.Uint32(data[off+8:])
+		md.Streams = append(md.Streams, Stream{
+			Type: entry.StreamType,
+			Size: entry.DataSize,
+		})
 
 		end := int64(entry.DataRVA) + int64(entry.DataSize)
 		if end > int64(len(data)) {
 			continue
 		}
 		stream := data[entry.DataRVA:end]
+		if entry.DataSize == 0 {
+			continue
+		}
 
 		switch entry.StreamType {
 		case streamSystemInfo:
@@ -430,12 +487,10 @@ func Parse(data []byte) (*Minidump, error) {
 		case streamLinuxMaps:
 			md.linuxString("maps", stream)
 		default:
-			if len(stream) > 0 {
-				md.UnknownStreams = append(md.UnknownStreams, UnknownStream{
-					Type: entry.StreamType,
-					Data: stream,
-				})
-			}
+			md.UnknownStreams = append(md.UnknownStreams, UnknownStream{
+				Type: entry.StreamType,
+				Data: stream,
+			})
 		}
 	}
 
@@ -852,9 +907,9 @@ func parseStacktraces(data []byte) []Stacktrace {
 		return nil
 	}
 	type rawFrame struct {
-		addr      uint64
-		symOff    uint32
-		symLen    uint32
+		addr   uint64
+		symOff uint32
+		symLen uint32
 	}
 	frames := make([]rawFrame, numFrames)
 	for i := range frames {

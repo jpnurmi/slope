@@ -7,8 +7,8 @@ import (
 	"time"
 
 	lipgloss "charm.land/lipgloss/v2"
-	"github.com/jpnurmi/slope/minidump"
 	"github.com/ianlancetaylor/demangle"
+	"github.com/jpnurmi/slope/minidump"
 )
 
 func renderMinidump(data []byte, width int) (string, error) {
@@ -25,6 +25,20 @@ func renderMinidump(data []byte, width int) (string, error) {
 			w = 40
 		}
 		b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+	}
+	streamName := func(typ uint32) string {
+		name := minidump.StreamTypeNames[typ]
+		if name == "" {
+			name = fmt.Sprintf("Stream %d", typ)
+		}
+		return name
+	}
+	for _, stream := range md.Streams {
+		if stream.Size != 0 {
+			continue
+		}
+		section(fmt.Sprintf("%s (empty)", streamName(stream.Type)))
+		b.WriteString("\n")
 	}
 	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 	kv := func(key, value string) {
@@ -334,10 +348,10 @@ func renderMinidump(data []byte, width int) (string, error) {
 	}
 
 	for _, us := range md.UnknownStreams {
-		name := minidump.StreamTypeNames[us.Type]
-		if name == "" {
-			name = fmt.Sprintf("Stream %d", us.Type)
+		if len(us.Data) == 0 {
+			continue
 		}
+		name := streamName(us.Type)
 		section(fmt.Sprintf("%s (unsupported, %s)", name, formatSize(len(us.Data))))
 		for _, line := range strings.Split(strings.TrimRight(hex.Dump(us.Data), "\n"), "\n") {
 			fmt.Fprintf(&b, "%s\n", line)

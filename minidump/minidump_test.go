@@ -2,6 +2,7 @@ package minidump
 
 import (
 	"encoding/binary"
+	"os"
 	"strings"
 	"testing"
 	"unicode/utf16"
@@ -184,9 +185,9 @@ func testMinidump() []byte {
 	b.writeU32(miLOff+4, 48) // SizeOfEntry
 	b.writeU64(miLOff+8, 1)  // NumberOfEntries
 	b.writeU64(miLOff+16, 0x7FFE0000)
-	b.writeU64(miLOff+40, 0x1000) // RegionSize
-	b.writeU32(miLOff+48, 0x1000) // State = MEM_COMMIT
-	b.writeU32(miLOff+52, 0x02)   // Protect = READONLY
+	b.writeU64(miLOff+40, 0x1000)    // RegionSize
+	b.writeU32(miLOff+48, 0x1000)    // State = MEM_COMMIT
+	b.writeU32(miLOff+52, 0x02)      // Protect = READONLY
 	b.writeU32(miLOff+56, 0x1000000) // Type = MEM_IMAGE
 
 	// FunctionTable: header(24) + descriptor(32) + native(0) + 1 entry(12) = 68 bytes
@@ -212,22 +213,22 @@ func testMinidump() []byte {
 	// ProcessVmCounters (0x50 = 80 bytes)
 	vmRVA := uint32(len(b.buf))
 	vmOff := b.grow(0x50)
-	b.writeU16(vmOff, 1)                      // Revision
-	b.writeU32(vmOff+0x04, 12345)             // PageFaultCount
-	b.writeU64(vmOff+0x08, 100*1024*1024)     // PeakWorkingSetSize (100 MB)
-	b.writeU64(vmOff+0x10, 80*1024*1024)      // WorkingSetSize (80 MB)
-	b.writeU64(vmOff+0x18, 2*1024*1024)       // QuotaPeakPagedPoolUsage
-	b.writeU64(vmOff+0x20, 1*1024*1024)       // QuotaPagedPoolUsage
-	b.writeU64(vmOff+0x28, 512*1024)          // QuotaPeakNonPagedPoolUsage
-	b.writeU64(vmOff+0x30, 256*1024)          // QuotaNonPagedPoolUsage
-	b.writeU64(vmOff+0x38, 50*1024*1024)      // PagefileUsage
-	b.writeU64(vmOff+0x40, 90*1024*1024)      // PeakPagefileUsage
-	b.writeU64(vmOff+0x48, 40*1024*1024)      // PrivateUsage
+	b.writeU16(vmOff, 1)                  // Revision
+	b.writeU32(vmOff+0x04, 12345)         // PageFaultCount
+	b.writeU64(vmOff+0x08, 100*1024*1024) // PeakWorkingSetSize (100 MB)
+	b.writeU64(vmOff+0x10, 80*1024*1024)  // WorkingSetSize (80 MB)
+	b.writeU64(vmOff+0x18, 2*1024*1024)   // QuotaPeakPagedPoolUsage
+	b.writeU64(vmOff+0x20, 1*1024*1024)   // QuotaPagedPoolUsage
+	b.writeU64(vmOff+0x28, 512*1024)      // QuotaPeakNonPagedPoolUsage
+	b.writeU64(vmOff+0x30, 256*1024)      // QuotaNonPagedPoolUsage
+	b.writeU64(vmOff+0x38, 50*1024*1024)  // PagefileUsage
+	b.writeU64(vmOff+0x40, 90*1024*1024)  // PeakPagefileUsage
+	b.writeU64(vmOff+0x48, 40*1024*1024)  // PrivateUsage
 
 	// BreakpadInfo (12 bytes)
 	bpRVA := uint32(len(b.buf))
 	bpOff := b.grow(12)
-	b.writeU32(bpOff, 0x03)   // Validity: both bits set
+	b.writeU32(bpOff, 0x03) // Validity: both bits set
 	b.writeU32(bpOff+4, 0x1A2B)
 	b.writeU32(bpOff+8, 0x3C4D)
 
@@ -248,24 +249,24 @@ func testMinidump() []byte {
 	// MemoryList: 1 entry (4 + 16 = 20 bytes)
 	memRVA := uint32(len(b.buf))
 	memOff := b.grow(20)
-	b.writeU32(memOff, 1)         // count
-	b.writeU64(memOff+4, 0x3000)  // StartOfMemoryRange
-	b.writeU32(memOff+12, 256)    // DataSize
-	b.writeU32(memOff+16, 0)      // RVA
+	b.writeU32(memOff, 1)        // count
+	b.writeU64(memOff+4, 0x3000) // StartOfMemoryRange
+	b.writeU32(memOff+12, 256)   // DataSize
+	b.writeU32(memOff+16, 0)     // RVA
 
 	// SystemMemoryInfo (0x1EC = 492 bytes)
 	smRVA := uint32(len(b.buf))
 	smOff := b.grow(0x1EC)
-	b.writeU16(smOff, 1)                    // Revision
-	b.writeU32(smOff+0x04+0x04, 4096)       // PageSize
-	b.writeU32(smOff+0x04+0x08, 4194304)    // NumberOfPhysPages (16 GB)
-	b.writeU32(smOff+0x04+0x30, 8)          // NumberOfProcessors
-	b.writeU64(smOff+0x74, 1000000)          // AvailablePages
-	b.writeU64(smOff+0x74+0x08, 2000000)     // CommittedPages
-	b.writeU64(smOff+0x74+0x10, 5000000)     // CommitLimit
-	b.writeU64(smOff+0x74+0x18, 3000000)     // PeakCommitment
-	b.writeU32(smOff+0x94+0x70, 50000)       // PagedPoolPages
-	b.writeU32(smOff+0x94+0x74, 25000)       // NonPagedPoolPages
+	b.writeU16(smOff, 1)                 // Revision
+	b.writeU32(smOff+0x04+0x04, 4096)    // PageSize
+	b.writeU32(smOff+0x04+0x08, 4194304) // NumberOfPhysPages (16 GB)
+	b.writeU32(smOff+0x04+0x30, 8)       // NumberOfProcessors
+	b.writeU64(smOff+0x74, 1000000)      // AvailablePages
+	b.writeU64(smOff+0x74+0x08, 2000000) // CommittedPages
+	b.writeU64(smOff+0x74+0x10, 5000000) // CommitLimit
+	b.writeU64(smOff+0x74+0x18, 3000000) // PeakCommitment
+	b.writeU32(smOff+0x94+0x70, 50000)   // PagedPoolPages
+	b.writeU32(smOff+0x94+0x74, 25000)   // NonPagedPoolPages
 
 	// Linux strings
 	lsbRelease := "Ubuntu 22.04.3 LTS"
@@ -289,20 +290,20 @@ func testMinidump() []byte {
 	sym2 := "main"
 	symbolData := sym1 + sym2
 	stRVA := uint32(len(b.buf))
-	stOff := b.grow(16) // header
-	b.writeU32(stOff, 1)                        // version
-	b.writeU32(stOff+4, 2)                      // num_threads
-	b.writeU32(stOff+8, 3)                      // num_frames
+	stOff := b.grow(16)                           // header
+	b.writeU32(stOff, 1)                          // version
+	b.writeU32(stOff+4, 2)                        // num_threads
+	b.writeU32(stOff+8, 3)                        // num_frames
 	b.writeU32(stOff+12, uint32(len(symbolData))) // symbol_bytes
 	// threads (2 * 12 = 24 bytes, already 8-byte aligned after 16-byte header)
 	t1Off := b.grow(12)
-	b.writeU32(t1Off, 0x1A2B)  // thread_id (crashing thread)
-	b.writeU32(t1Off+4, 0)     // start_frame
-	b.writeU32(t1Off+8, 2)     // num_frames
+	b.writeU32(t1Off, 0x1A2B) // thread_id (crashing thread)
+	b.writeU32(t1Off+4, 0)    // start_frame
+	b.writeU32(t1Off+8, 2)    // num_frames
 	t2Off := b.grow(12)
-	b.writeU32(t2Off, 0x3C4D)  // thread_id
-	b.writeU32(t2Off+4, 2)     // start_frame
-	b.writeU32(t2Off+8, 1)     // num_frames
+	b.writeU32(t2Off, 0x3C4D) // thread_id
+	b.writeU32(t2Off+4, 2)    // start_frame
+	b.writeU32(t2Off+8, 1)    // num_frames
 	// frames (3 * 16 = 48 bytes, already 8-byte aligned after 24-byte thread list)
 	f1Off := b.grow(16)
 	b.writeU64(f1Off, 0x00007FF6A1B23456)   // instruction_addr
@@ -313,9 +314,9 @@ func testMinidump() []byte {
 	b.writeU32(f2Off+8, uint32(len(sym1)))  // symbol_offset
 	b.writeU32(f2Off+12, uint32(len(sym2))) // symbol_len
 	f3Off := b.grow(16)
-	b.writeU64(f3Off, 0xDEAD)              // instruction_addr (no module match)
-	b.writeU32(f3Off+8, 0)                 // symbol_offset
-	b.writeU32(f3Off+12, 0)                // symbol_len (no symbol)
+	b.writeU64(f3Off, 0xDEAD) // instruction_addr (no module match)
+	b.writeU32(f3Off+8, 0)    // symbol_offset
+	b.writeU32(f3Off+12, 0)   // symbol_len (no symbol)
 	// symbols
 	b.buf = append(b.buf, []byte(symbolData)...)
 	stSize := uint32(len(b.buf)) - stRVA
@@ -729,6 +730,89 @@ func TestParseUnknownStream(t *testing.T) {
 	}
 }
 
+func TestParseZeroLengthCustomStream(t *testing.T) {
+	b := newBuilder()
+	b.grow(32)
+	b.writeU32(0, signature)
+	b.writeU32(8, 1)
+	b.writeU32(12, 32)
+	b.addStream(0x53790002, 0, uint32(len(b.buf)+12))
+
+	md, err := Parse(b.buf)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if len(md.Streams) != 1 {
+		t.Fatalf("Streams = %d, want 1", len(md.Streams))
+	}
+	if md.Streams[0].Type != 0x53790002 {
+		t.Errorf("Stream.Type = 0x%X, want 0x53790002", md.Streams[0].Type)
+	}
+	if md.Streams[0].Size != 0 {
+		t.Errorf("Stream.Size = %d, want 0", md.Streams[0].Size)
+	}
+	if len(md.UnknownStreams) != 0 {
+		t.Fatalf("UnknownStreams = %d, want 0", len(md.UnknownStreams))
+	}
+}
+
+func TestParseSyntheticStreamTypes(t *testing.T) {
+	const customStream = 0x53790002
+
+	data, err := os.ReadFile("testdata/synthetic.dmp")
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	md, err := Parse(data)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+
+	wantStreams := uint32(len(StreamTypeNames) + 1)
+	if md.Header.StreamCount != wantStreams {
+		t.Fatalf("StreamCount = %d, want %d", md.Header.StreamCount, wantStreams)
+	}
+	if len(md.Streams) != int(wantStreams) {
+		t.Fatalf("Streams = %d, want %d", len(md.Streams), wantStreams)
+	}
+
+	dir := int(md.Header.StreamDirRVA)
+	seenDir := make(map[uint32]bool)
+	seenStreams := make(map[uint32]Stream)
+	for i := uint32(0); i < md.Header.StreamCount; i++ {
+		off := dir + int(i)*12
+		if off+12 > len(data) {
+			t.Fatalf("stream directory entry %d out of bounds", i)
+		}
+		seenDir[le.Uint32(data[off:])] = true
+		stream := md.Streams[i]
+		seenStreams[stream.Type] = Stream{
+			Type: stream.Type,
+			Size: stream.Size,
+		}
+	}
+	for typ, name := range StreamTypeNames {
+		if !seenDir[typ] {
+			t.Errorf("synthetic.dmp missing %s stream 0x%X", name, typ)
+		}
+		if stream, ok := seenStreams[typ]; !ok {
+			t.Errorf("parsed Streams missing %s stream 0x%X", name, typ)
+		} else if stream.Size != 0 {
+			t.Errorf("parsed Streams size for %s = %d, want 0", name, stream.Size)
+		}
+	}
+	if !seenDir[customStream] {
+		t.Fatalf("synthetic.dmp missing custom stream 0x%X", customStream)
+	}
+
+	if len(md.UnknownStreams) != 0 {
+		t.Fatalf("UnknownStreams = %d, want 0", len(md.UnknownStreams))
+	}
+	if name := StreamTypeNames[customStream]; name != "" {
+		t.Errorf("custom stream name = %q, want empty", name)
+	}
+}
+
 func TestParseShortStreams(t *testing.T) {
 	b := newBuilder()
 	b.grow(32)
@@ -999,7 +1083,7 @@ func TestParseStacktracesEdgeCases(t *testing.T) {
 			return d
 		}()},
 		{"truncated frames", func() []byte {
-			d := make([]byte, 24) // header(16) + 0 threads, but claims 1 frame
+			d := make([]byte, 24)   // header(16) + 0 threads, but claims 1 frame
 			le.PutUint32(d[0:], 1)  // version
 			le.PutUint32(d[4:], 0)  // num_threads
 			le.PutUint32(d[8:], 10) // num_frames (too many)
@@ -1034,11 +1118,57 @@ func TestParseStacktracesEdgeCases(t *testing.T) {
 }
 
 func TestStreamTypeNames(t *testing.T) {
-	if name := StreamTypeNames[3]; name != "ThreadList" {
-		t.Errorf("type 3 = %q, want ThreadList", name)
+	tests := map[uint32]string{
+		streamUnused:                "Unused",
+		streamReserved0:             "Reserved0",
+		streamReserved1:             "Reserved1",
+		streamThreadList:            "ThreadList",
+		streamModuleList:            "ModuleList",
+		streamMemoryList:            "MemoryList",
+		streamException:             "Exception",
+		streamSystemInfo:            "SystemInfo",
+		streamThreadExList:          "ThreadExList",
+		streamMemory64List:          "Memory64List",
+		streamCommentA:              "CommentA",
+		streamCommentW:              "CommentW",
+		streamHandleData:            "HandleData",
+		streamFuncTable:             "FunctionTable",
+		streamUnloadedMods:          "UnloadedModuleList",
+		streamMiscInfo:              "MiscInfo",
+		streamMemoryInfo:            "MemoryInfoList",
+		streamThreadInfo:            "ThreadInfoList",
+		streamHandleOperationList:   "HandleOperationList",
+		streamToken:                 "Token",
+		streamJavaScriptData:        "JavaScriptData",
+		streamSysMemInfo:            "SystemMemoryInfo",
+		streamVmCounters:            "ProcessVmCounters",
+		streamIptTrace:              "IptTrace",
+		streamThreadNames:           "ThreadNames",
+		streamCompressedMemory:      "CompressedMemory",
+		streamCompressedMemorySQL:   "CompressedMemorySQL",
+		ceStreamNull:                "ceStreamNull",
+		ceStreamSystemInfo:          "ceStreamSystemInfo",
+		ceStreamException:           "ceStreamException",
+		ceStreamModuleList:          "ceStreamModuleList",
+		ceStreamProcessList:         "ceStreamProcessList",
+		ceStreamThreadList:          "ceStreamThreadList",
+		ceStreamThreadContextList:   "ceStreamThreadContextList",
+		ceStreamThreadCallStackList: "ceStreamThreadCallStackList",
+		ceStreamMemoryVirtualList:   "ceStreamMemoryVirtualList",
+		ceStreamMemoryPhysicalList:  "ceStreamMemoryPhysicalList",
+		ceStreamBucketParameters:    "ceStreamBucketParameters",
+		ceStreamProcessModuleMap:    "ceStreamProcessModuleMap",
+		ceStreamDiagnosisList:       "ceStreamDiagnosisList",
+		streamLastReserved:          "LastReserved",
+		streamCrashpadInfo:          "CrashpadInfo",
+		streamBreakpadInfo:          "BreakpadInfo",
+		streamLinuxDsoDebug:         "LinuxDsoDebug",
+		streamSentryStackTraces:     "SentryStackTraces",
 	}
-	if name := StreamTypeNames[0x43500001]; name != "CrashpadInfo" {
-		t.Errorf("type 0x43500001 = %q, want CrashpadInfo", name)
+	for typ, want := range tests {
+		if name := StreamTypeNames[typ]; name != want {
+			t.Errorf("type 0x%X = %q, want %q", typ, name, want)
+		}
 	}
 	if name := StreamTypeNames[9999]; name != "" {
 		t.Errorf("unknown type = %q, want empty", name)

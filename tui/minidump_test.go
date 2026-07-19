@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 	"unicode/utf16"
@@ -189,10 +190,10 @@ func buildTestMinidump() []byte {
 	le.PutUint32(vm[0x04:], 5000)
 	le.PutUint64(vm[0x08:], 50*1024*1024)
 	le.PutUint64(vm[0x10:], 30*1024*1024)
-	le.PutUint64(vm[0x18:], 2*1024*1024)  // QuotaPeakPagedPoolUsage
-	le.PutUint64(vm[0x20:], 1*1024*1024)  // QuotaPagedPoolUsage
-	le.PutUint64(vm[0x28:], 512*1024)     // QuotaPeakNonPagedPoolUsage
-	le.PutUint64(vm[0x30:], 256*1024)     // QuotaNonPagedPoolUsage
+	le.PutUint64(vm[0x18:], 2*1024*1024) // QuotaPeakPagedPoolUsage
+	le.PutUint64(vm[0x20:], 1*1024*1024) // QuotaPagedPoolUsage
+	le.PutUint64(vm[0x28:], 512*1024)    // QuotaPeakNonPagedPoolUsage
+	le.PutUint64(vm[0x30:], 256*1024)    // QuotaNonPagedPoolUsage
 	le.PutUint64(vm[0x38:], 20*1024*1024)
 	le.PutUint64(vm[0x40:], 40*1024*1024)
 	le.PutUint64(vm[0x48:], 25*1024*1024)
@@ -231,21 +232,21 @@ func buildTestMinidump() []byte {
 	plainSym := "plain_func"
 	symbolData := mangledSym + plainSym
 	stRVA := uint32(len(buf))
-	st := make([]byte, 16+12+4+32) // header(16) + 1 thread(12) + align(4) + 2 frames(32)
-	le.PutUint32(st[0:], 1)                           // version
-	le.PutUint32(st[4:], 1)                            // num_threads
-	le.PutUint32(st[8:], 2)                            // num_frames
-	le.PutUint32(st[12:], uint32(len(symbolData)))     // symbol_bytes
-	le.PutUint32(st[16:], 0x1A2B)                      // thread_id
-	le.PutUint32(st[20:], 0)                           // start_frame
-	le.PutUint32(st[24:], 2)                           // num_frames
+	st := make([]byte, 16+12+4+32)                 // header(16) + 1 thread(12) + align(4) + 2 frames(32)
+	le.PutUint32(st[0:], 1)                        // version
+	le.PutUint32(st[4:], 1)                        // num_threads
+	le.PutUint32(st[8:], 2)                        // num_frames
+	le.PutUint32(st[12:], uint32(len(symbolData))) // symbol_bytes
+	le.PutUint32(st[16:], 0x1A2B)                  // thread_id
+	le.PutUint32(st[20:], 0)                       // start_frame
+	le.PutUint32(st[24:], 2)                       // num_frames
 	// 4 bytes padding at [28:32] for 8-byte alignment
-	le.PutUint64(st[32:], 0x7FF6A1B23456)              // frame 0 addr
-	le.PutUint32(st[40:], 0)                           // symbol_offset
-	le.PutUint32(st[44:], uint32(len(mangledSym)))     // symbol_len
-	le.PutUint64(st[48:], 0x7FF6A1B24000)              // frame 1 addr
-	le.PutUint32(st[56:], uint32(len(mangledSym)))     // symbol_offset
-	le.PutUint32(st[60:], uint32(len(plainSym)))       // symbol_len
+	le.PutUint64(st[32:], 0x7FF6A1B23456)          // frame 0 addr
+	le.PutUint32(st[40:], 0)                       // symbol_offset
+	le.PutUint32(st[44:], uint32(len(mangledSym))) // symbol_len
+	le.PutUint64(st[48:], 0x7FF6A1B24000)          // frame 1 addr
+	le.PutUint32(st[56:], uint32(len(mangledSym))) // symbol_offset
+	le.PutUint32(st[60:], uint32(len(plainSym)))   // symbol_len
 	buf = append(buf, st...)
 	buf = append(buf, []byte(symbolData)...)
 	stSize := uint32(len(buf)) - stRVA
@@ -373,6 +374,37 @@ func TestRenderMinidump(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("output missing %q", want)
 		}
+	}
+}
+
+func TestRenderSyntheticEmptyStreams(t *testing.T) {
+	data, err := os.ReadFile("../minidump/testdata/synthetic.dmp")
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	got, err := renderMinidump(data, 80)
+	if err != nil {
+		t.Fatalf("renderMinidump: %v", err)
+	}
+
+	for _, want := range []string{
+		"SystemInfo (empty)",
+		"ThreadExList (empty)",
+		"CompressedMemory (empty)",
+		"ceStreamSystemInfo (empty)",
+		"LastReserved (empty)",
+		"LinuxCpuInfo (empty)",
+		"Stream 1400438786 (empty)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q", want)
+		}
+	}
+	if strings.Contains(got, "unsupported, 0 B") {
+		t.Error("empty streams should not render as unsupported 0 B")
+	}
+	if strings.Contains(got, "Linux cpu_info") {
+		t.Error("empty Linux streams should not render blank parsed sections")
 	}
 }
 
@@ -511,8 +543,8 @@ func TestRenderMinidumpTruncation(t *testing.T) {
 		off := 16 + i*48
 		le.PutUint64(mi[off:], uint64(i*0x1000))
 		le.PutUint64(mi[off+24:], 0x1000)
-		le.PutUint32(mi[off+32:], 0x1000) // MEM_COMMIT
-		le.PutUint32(mi[off+36:], 0x04)   // READWRITE
+		le.PutUint32(mi[off+32:], 0x1000)  // MEM_COMMIT
+		le.PutUint32(mi[off+36:], 0x04)    // READWRITE
 		le.PutUint32(mi[off+40:], 0x20000) // MEM_PRIVATE
 	}
 	buf = append(buf, mi...)
