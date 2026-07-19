@@ -388,10 +388,12 @@ func TestRenderSyntheticEmptyStreams(t *testing.T) {
 	}
 
 	for _, want := range []string{
+		"SystemInfo (empty)",
 		"ThreadExList (empty)",
 		"CompressedMemory (empty)",
 		"ceStreamSystemInfo (empty)",
 		"LastReserved (empty)",
+		"LinuxCpuInfo (empty)",
 		"Stream 1400438786 (empty)",
 	} {
 		if !strings.Contains(got, want) {
@@ -400,6 +402,9 @@ func TestRenderSyntheticEmptyStreams(t *testing.T) {
 	}
 	if strings.Contains(got, "unsupported, 0 B") {
 		t.Error("empty streams should not render as unsupported 0 B")
+	}
+	if strings.Contains(got, "Linux cpu_info") {
+		t.Error("empty Linux streams should not render blank parsed sections")
 	}
 }
 

@@ -70,6 +70,7 @@ const (
 
 type Minidump struct {
 	Header          Header
+	Streams         []Stream
 	SystemInfo      *SystemInfo
 	Exception       *Exception
 	Threads         []Thread
@@ -89,6 +90,11 @@ type Minidump struct {
 	Comment         string
 	LinuxStrings    map[string]string
 	UnknownStreams  []UnknownStream
+}
+
+type Stream struct {
+	Type uint32
+	Size uint32
 }
 
 type UnknownStream struct {
@@ -410,12 +416,19 @@ func Parse(data []byte) (*Minidump, error) {
 		entry.StreamType = le.Uint32(data[off:])
 		entry.DataSize = le.Uint32(data[off+4:])
 		entry.DataRVA = le.Uint32(data[off+8:])
+		md.Streams = append(md.Streams, Stream{
+			Type: entry.StreamType,
+			Size: entry.DataSize,
+		})
 
 		end := int64(entry.DataRVA) + int64(entry.DataSize)
 		if end > int64(len(data)) {
 			continue
 		}
 		stream := data[entry.DataRVA:end]
+		if entry.DataSize == 0 {
+			continue
+		}
 
 		switch entry.StreamType {
 		case streamSystemInfo:

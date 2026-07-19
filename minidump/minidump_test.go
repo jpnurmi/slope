@@ -742,14 +742,17 @@ func TestParseZeroLengthCustomStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if len(md.UnknownStreams) != 1 {
-		t.Fatalf("UnknownStreams = %d, want 1", len(md.UnknownStreams))
+	if len(md.Streams) != 1 {
+		t.Fatalf("Streams = %d, want 1", len(md.Streams))
 	}
-	if md.UnknownStreams[0].Type != 0x53790002 {
-		t.Errorf("UnknownStream.Type = 0x%X, want 0x53790002", md.UnknownStreams[0].Type)
+	if md.Streams[0].Type != 0x53790002 {
+		t.Errorf("Stream.Type = 0x%X, want 0x53790002", md.Streams[0].Type)
 	}
-	if len(md.UnknownStreams[0].Data) != 0 {
-		t.Errorf("UnknownStream.Data length = %d, want 0", len(md.UnknownStreams[0].Data))
+	if md.Streams[0].Size != 0 {
+		t.Errorf("Stream.Size = %d, want 0", md.Streams[0].Size)
+	}
+	if len(md.UnknownStreams) != 0 {
+		t.Fatalf("UnknownStreams = %d, want 0", len(md.UnknownStreams))
 	}
 }
 
@@ -769,51 +772,44 @@ func TestParseSyntheticStreamTypes(t *testing.T) {
 	if md.Header.StreamCount != wantStreams {
 		t.Fatalf("StreamCount = %d, want %d", md.Header.StreamCount, wantStreams)
 	}
+	if len(md.Streams) != int(wantStreams) {
+		t.Fatalf("Streams = %d, want %d", len(md.Streams), wantStreams)
+	}
 
 	dir := int(md.Header.StreamDirRVA)
 	seenDir := make(map[uint32]bool)
+	seenStreams := make(map[uint32]Stream)
 	for i := uint32(0); i < md.Header.StreamCount; i++ {
 		off := dir + int(i)*12
 		if off+12 > len(data) {
 			t.Fatalf("stream directory entry %d out of bounds", i)
 		}
 		seenDir[le.Uint32(data[off:])] = true
+		stream := md.Streams[i]
+		seenStreams[stream.Type] = Stream{
+			Type: stream.Type,
+			Size: stream.Size,
+		}
 	}
 	for typ, name := range StreamTypeNames {
 		if !seenDir[typ] {
 			t.Errorf("synthetic.dmp missing %s stream 0x%X", name, typ)
+		}
+		if stream, ok := seenStreams[typ]; !ok {
+			t.Errorf("parsed Streams missing %s stream 0x%X", name, typ)
+		} else if stream.Size != 0 {
+			t.Errorf("parsed Streams size for %s = %d, want 0", name, stream.Size)
 		}
 	}
 	if !seenDir[customStream] {
 		t.Fatalf("synthetic.dmp missing custom stream 0x%X", customStream)
 	}
 
-	seenUnknown := make(map[uint32]UnknownStream)
-	for _, us := range md.UnknownStreams {
-		seenUnknown[us.Type] = us
-	}
-	for _, typ := range []uint32{
-		streamUnused,
-		streamReserved0,
-		streamReserved1,
-		streamThreadExList,
-		streamToken,
-		streamCompressedMemory,
-		ceStreamSystemInfo,
-		streamLastReserved,
-		0x43500001,
-		streamLinuxDsoDebug,
-		customStream,
-	} {
-		if _, ok := seenUnknown[typ]; !ok {
-			t.Errorf("UnknownStreams missing unsupported stream 0x%X", typ)
-		}
+	if len(md.UnknownStreams) != 0 {
+		t.Fatalf("UnknownStreams = %d, want 0", len(md.UnknownStreams))
 	}
 	if name := StreamTypeNames[customStream]; name != "" {
 		t.Errorf("custom stream name = %q, want empty", name)
-	}
-	if us, ok := seenUnknown[customStream]; !ok || len(us.Data) != 0 {
-		t.Errorf("custom stream data length = %d, want 0", len(us.Data))
 	}
 }
 

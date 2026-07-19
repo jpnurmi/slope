@@ -26,6 +26,20 @@ func renderMinidump(data []byte, width int) (string, error) {
 		}
 		b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
 	}
+	streamName := func(typ uint32) string {
+		name := minidump.StreamTypeNames[typ]
+		if name == "" {
+			name = fmt.Sprintf("Stream %d", typ)
+		}
+		return name
+	}
+	for _, stream := range md.Streams {
+		if stream.Size != 0 {
+			continue
+		}
+		section(fmt.Sprintf("%s (empty)", streamName(stream.Type)))
+		b.WriteString("\n")
+	}
 	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 	kv := func(key, value string) {
 		b.WriteString(keyStyle.Render(key) + value + "\n")
@@ -334,15 +348,10 @@ func renderMinidump(data []byte, width int) (string, error) {
 	}
 
 	for _, us := range md.UnknownStreams {
-		name := minidump.StreamTypeNames[us.Type]
-		if name == "" {
-			name = fmt.Sprintf("Stream %d", us.Type)
-		}
 		if len(us.Data) == 0 {
-			section(fmt.Sprintf("%s (empty)", name))
-			b.WriteString("\n")
 			continue
 		}
+		name := streamName(us.Type)
 		section(fmt.Sprintf("%s (unsupported, %s)", name, formatSize(len(us.Data))))
 		for _, line := range strings.Split(strings.TrimRight(hex.Dump(us.Data), "\n"), "\n") {
 			fmt.Fprintf(&b, "%s\n", line)
