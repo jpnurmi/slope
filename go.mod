@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/ianlancetaylor/demangle v0.0.0-20251118225945-96ee0021ea0f
 	github.com/wk8/go-ordered-map/v2 v2.1.8
-	golang.org/x/image v0.44.0
+	golang.org/x/image v0.45.0
 )
 
 require (
