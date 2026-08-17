@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.2
+
+### Features
+
+- Recognize well-known stream types (#36)
+
+### Dependencies
+
+- Bump the charm group with 3 updates (#31)
+- Bump golang.org/x/image from 0.37.0 to 0.44.0 (#34)
+- Bump actions/setup-go from 6 to 7 (#35)
+- Bump the charm group across 1 directory with 2 updates (#33)
+- Bump charm.land/lipgloss/v2 from 2.0.5 to 2.0.6 in the charm group (#37)
+- Bump golang.org/x/image from 0.44.0 to 0.45.0 (#38)
+
 ## 0.3.1
 
 ### Fixes
