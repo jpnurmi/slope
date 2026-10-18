@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.3
+
+### Dependencies
+
+- Bump charm.land/bubbletea/v2 in the charm group (#40)
+- Bump charm.land/bubbles/v2 in the charm group (#41)
+- Bump golang.org/x/image from 0.45.0 to 0.46.0 (#42)
+- Bump charm.land/bubbletea/v2 (#43)
+- Bump charm.land/bubbletea/v2 (#44)
+- Bump golang.org/x/image from 0.46.0 to 0.47.0 (#45)
+
 ## 0.3.2
 
 ### Features
