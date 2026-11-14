@@ -1,11 +1,11 @@
 module github.com/jpnurmi/slope
 
-go 1.26.0
+go 1.26.7
 
 require (
 	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.1.1
-	charm.land/lipgloss/v2 v2.0.6
+	charm.land/lipgloss/v2 v2.1.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/ianlancetaylor/demangle v0.0.0-20251118225945-96ee0021ea0f
